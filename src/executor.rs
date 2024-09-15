@@ -1,4 +1,6 @@
 use crate::request::{Dependency, Request};
+use bat::PrettyPrinter;
+use colored::*;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -23,8 +25,6 @@ pub async fn execute_request_chain(
     let client = Client::new(); // Create an HTTP client for making requests
 
     for request in requests {
-        println!("Executing request: {}", request.name);
-
         // Resolve URL
         let url = resolve_placeholders(&request.url, &results, &request.dependencies)?;
 
@@ -64,9 +64,59 @@ pub async fn execute_request_chain(
             .send()
             .await?;
 
+        // Extract the headers first, since `res.text()` will consume `res`
+        let headers: HeaderMap = res.headers().clone(); // Clone the headers to avoid borrowing issues
+
+        // Now you can safely consume the body
         let status = res.status();
         let body_text = res.text().await?;
-        println!("Response for {}: {} {}", request.name, status, body_text);
+
+        // Color the status based on success or failure
+        let status_color = if status.is_success() {
+            "Success".green() // Green for success
+        } else {
+            format!("Error: {}", status).red() // Red for failure
+        };
+
+        // Print the formatted request name and status with color
+        println!("\n{}", "─".repeat(50)); // Line separator
+        println!(
+            "Executing request: {} | Status: {}",
+            request.name.bold(),
+            status_color
+        );
+        println!("{}", "─".repeat(50)); // Line separator
+
+        // Prepare the headers in a formatted string for pretty printing
+        let mut headers_formatted = String::new();
+        for (key, value) in headers {
+            let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
+            let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
+            headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
+            // Format as key: value without quotes
+        }
+
+        // Pretty print the headers
+        PrettyPrinter::new()
+            .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
+            .language("toml") // Print as TOML (or use "yaml" for a similar format)
+            .print()?;
+
+        // Pretty print the body, if it is valid JSON
+        if let Ok(pretty_json) =
+            serde_json::to_string_pretty(&serde_json::from_str::<serde_json::Value>(&body_text)?)
+        {
+            PrettyPrinter::new()
+                .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
+                .language("json") // Specify JSON language for highlighting
+                .print()?;
+        } else {
+            // If it's not JSON, print the raw body as plain text
+            PrettyPrinter::new()
+                .input_from_bytes(body_text.as_bytes()) // Use raw body text
+                .language("plain") // Print as plain text
+                .print()?;
+        }
 
         // Store the response for use in future requests, if applicable
         if let Ok(json) = serde_json::from_str::<Value>(&body_text) {
