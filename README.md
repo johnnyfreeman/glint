@@ -1,6 +1,6 @@
 # send
 
-A simple HTTP client for the terminal. The CLI allows you to define HTTP requests with dependencies, placeholders, and dynamic data sourcing from various sources like environment variables, files, or previous request responses.
+A simple CLI for testing your APIs. Define HTTP requests in TOML files and commit them to source control.
 
 ## Features
 
