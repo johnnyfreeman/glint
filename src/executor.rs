@@ -77,11 +77,17 @@ pub async fn execute_request_chain(
         println!(
             "\n{} {}",
             if let true = status.is_client_error() {
-                style(status.as_str()).on_yellow().black()
+                style(" ".to_string() + status.as_str() + " ")
+                    .on_yellow()
+                    .black()
             } else if let true = status.is_server_error() {
-                style(status.as_str()).on_red().black()
+                style(" ".to_string() + status.as_str() + " ")
+                    .on_red()
+                    .black()
             } else {
-                style(status.as_str()).on_green().black()
+                style(" ".to_string() + status.as_str() + " ")
+                    .on_green()
+                    .black()
             },
             style(&request.name).bold(),
             // status.canonical_reason().unwrap_or(""),
@@ -98,6 +104,8 @@ pub async fn execute_request_chain(
                 // Format as key: value without quotes
             }
 
+            println!();
+
             // Pretty print the headers
             PrettyPrinter::new()
                 .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
@@ -105,6 +113,8 @@ pub async fn execute_request_chain(
                 .print()?;
             println!();
         }
+
+        println!();
 
         // Pretty print the body, if it is valid JSON
         if let Ok(pretty_json) =
