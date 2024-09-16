@@ -1,6 +1,8 @@
 use crate::request::{Dependency, Request};
 use bat::PrettyPrinter;
 use colored::*;
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Input;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -253,10 +255,8 @@ fn save_env_file(
 }
 
 fn prompt_user(prompt: &str) -> String {
-    println!("{}", prompt);
-    let mut input = String::new();
-    std::io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read input");
-    input.trim().to_string()
+    Input::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .interact_text()
+        .unwrap()
 }
