@@ -101,6 +101,7 @@ pub async fn execute_request_chain(
             .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
             .language("toml") // Print as TOML (or use "yaml" for a similar format)
             .print()?;
+        println!();
 
         // Pretty print the body, if it is valid JSON
         if let Ok(pretty_json) =
@@ -110,12 +111,14 @@ pub async fn execute_request_chain(
                 .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
                 .language("json") // Specify JSON language for highlighting
                 .print()?;
+            println!();
         } else {
             // If it's not JSON, print the raw body as plain text
             PrettyPrinter::new()
                 .input_from_bytes(body_text.as_bytes()) // Use raw body text
                 .language("plain") // Print as plain text
                 .print()?;
+            println!();
         }
 
         // Store the response for use in future requests, if applicable
