@@ -188,6 +188,19 @@ fn resolve_dependency_value(
                 Err(format!("Key '{}' not found in file '{}'", key, env_file).into())
             }
         }
+        Dependency::EnvVar { name, prompt } => {
+            if let Ok(env_value) = std::env::var(name) {
+                Ok(env_value)
+            } else if let Some(prompt) = prompt {
+                Ok(prompt_user(prompt))
+            } else {
+                Err(format!("Environment variable '{}' not found", name).into())
+            }
+        }
+        Dependency::File { path } => {
+            let file_content = std::fs::read_to_string(path)?;
+            Ok(file_content.trim().to_string())
+        }
         Dependency::Request { request, path } => {
             if let Some(json) = results.get(request) {
                 if let Some(extracted) = json.pointer(&path) {
@@ -209,17 +222,7 @@ fn resolve_dependency_value(
                 Err(format!("Request '{}' not found in results", request).into())
             }
         }
-        Dependency::EnvVar { name } => {
-            if let Ok(env_value) = std::env::var(name) {
-                Ok(env_value)
-            } else {
-                Err(format!("Environment variable '{}' not found", name).into())
-            }
-        }
-        Dependency::File { path } => {
-            let file_content = std::fs::read_to_string(path)?;
-            Ok(file_content.trim().to_string())
-        }
+        Dependency::Prompt { label } => Ok(prompt_user(label)),
     }
 }
 

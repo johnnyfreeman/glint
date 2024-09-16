@@ -19,12 +19,9 @@ pub struct Request {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "source", rename_all = "lowercase")]
 pub enum Dependency {
-    Request {
-        request: String,
-        path: String,
-    },
     EnvVar {
         name: String,
+        prompt: Option<String>,
     },
     EnvFile {
         env_file: String,
@@ -32,6 +29,13 @@ pub enum Dependency {
         prompt: Option<String>,
     },
     File {
+        path: String,
+    },
+    Prompt {
+        label: String,
+    },
+    Request {
+        request: String,
         path: String,
     },
 }
