@@ -1,4 +1,4 @@
-# send
+# glint
 
 A simple CLI for testing your APIs. Define HTTP requests in TOML files and commit them to source control.
 
@@ -18,8 +18,8 @@ A simple CLI for testing your APIs. Define HTTP requests in TOML files and commi
 1. **Clone the Repository:**
 
  ```bash
- git clone git@github.com:johnnyfreeman/send.git
- cd send
+ git clone git@github.com:johnnyfreeman/glint.git
+ cd glint
  ```
 
 2. **Build and Install the Application:**
@@ -28,7 +28,7 @@ A simple CLI for testing your APIs. Define HTTP requests in TOML files and commi
  cargo install
  ```
 
-You can then run `send` from your terminal.
+You can then run `glint` from your terminal.
 
 ## Usage
 
@@ -100,7 +100,7 @@ email = "john.doe@example.com"
 Run the application:
 
 ```bash
-send
+glint
 ```
 
 ### Behavior
