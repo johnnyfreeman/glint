@@ -1,0 +1,58 @@
+[[requests]]
+name = "Get Token"
+method = "POST"
+url = "https://github.com/login/oauth/access_token"
+body = """
+{
+  "client_id": "{client_id}",
+  "client_secret": "{client_secret}",
+  "code": "{code}"
+}
+"""
+[requests.headers]
+"Accept" = "application/json"
+[requests.dependencies.client_id]
+source = "envvar"
+name = "GITHUB_CLIENT_ID"
+prompt = "Enter your GitHub Client ID"
+[requests.dependencies.client_secret]
+source = "envvar"
+name = "GITHUB_CLIENT_SECRET"
+prompt = "Enter your GitHub Client Secret"
+[requests.dependencies.code]
+source = "envvar"
+name = "GITHUB_AUTH_CODE"
+prompt = "Enter authorization code"
+
+[[requests]]
+name = "Get Repositories"
+method = "GET"
+url = "https://api.github.com/user/repos"
+[requests.headers]
+"Authorization" = "Bearer {token}"
+"Accept" = "application/vnd.github.v3+json"
+[requests.dependencies.token]
+source = "request"
+request = "Get Token"
+path = "/access_token"
+
+[[requests]]
+name = "Get Repository"
+method = "GET"
+url = "https://api.github.com/repos/{owner}/{repo}"
+[requests.headers]
+"Authorization" = "Bearer {token}"
+"Accept" = "application/vnd.github.v3+json"
+[requests.dependencies.owner]
+source = "request"
+request = "Get Repositories"
+path = "/0/owner/login"
+[requests.dependencies.repo]
+source = "request"
+request = "Get Repositories"
+path = "/0/name"
+[requests.dependencies.token]
+source = "request"
+request = "Get Token"
+path = "/access_token"
+

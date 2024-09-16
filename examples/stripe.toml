@@ -1,0 +1,11 @@
+[[requests]]
+name = "Get Charges"
+method = "GET"
+url = "https://api.stripe.com/v1/charges"
+[requests.headers]
+"Authorization" = "Bearer {api_key}"
+[requests.dependencies.api_key]
+source = "envvar"
+name = "STRIPE_API_KEY"
+prompt = "Enter your Stripe API Key"
+

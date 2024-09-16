@@ -1,0 +1,34 @@
+[[requests]]
+name = "Send SMS"
+method = "POST"
+url = "https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+body = """
+{
+  "To": "{to_number}",
+  "From": "{from_number}",
+  "Body": "{message_body}"
+}
+"""
+[requests.headers]
+"Authorization" = "Basic {auth_token}"
+"Content-Type" = "application/x-www-form-urlencoded"
+[requests.dependencies.account_sid]
+source = "envvar"
+name = "TWILIO_ACCOUNT_SID"
+prompt = "Enter your Twilio Account SID"
+[requests.dependencies.auth_token]
+source = "envvar"
+name = "TWILIO_AUTH_TOKEN"
+prompt = "Enter your Twilio Auth Token"
+[requests.dependencies.to_number]
+source = "envvar"
+name = "TWILIO_TO_NUMBER"
+prompt = "Enter the recipient's phone number"
+[requests.dependencies.from_number]
+source = "envvar"
+name = "TWILIO_FROM_NUMBER"
+prompt = "Enter your Twilio phone number"
+[requests.dependencies.message_body]
+source = "prompt"
+label = "Enter the message you want to send"
+
