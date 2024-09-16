@@ -1,6 +1,6 @@
 use crate::request::{Dependency, Request};
 use bat::PrettyPrinter;
-use colored::*;
+use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Input;
 use lazy_static::lazy_static;
@@ -74,21 +74,19 @@ pub async fn execute_request_chain(
         let status = res.status();
         let body_text = res.text().await?;
 
-        // Color the status based on success or failure
-        let status_color = if status.is_success() {
-            "Success".green() // Green for success
-        } else {
-            format!("Error: {}", status).red() // Red for failure
-        };
-
-        // Print the formatted request name and status with color
-        println!("\n{}", "─".repeat(50)); // Line separator
         println!(
-            "Executing request: {} | Status: {}",
-            request.name.bold(),
-            status_color
+            "\n{} {}",
+            if let true = status.is_client_error() {
+                style(status.as_str()).on_yellow().black()
+            } else if let true = status.is_server_error() {
+                style(status.as_str()).on_red().black()
+            } else {
+                style(status.as_str()).on_green().black()
+            },
+            style(&request.name).bold(),
+            // status.canonical_reason().unwrap_or(""),
         );
-        println!("{}", "─".repeat(50)); // Line separator
+        // println!("{}", style("─".repeat(50)).dim());
 
         if show_headers {
             // Prepare the headers in a formatted string for pretty printing
