@@ -111,7 +111,6 @@ pub async fn execute_request_chain(
                 .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
                 .language("toml") // Print as TOML (or use "yaml" for a similar format)
                 .print()?;
-            println!();
         }
 
         println!();
