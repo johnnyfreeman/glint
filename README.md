@@ -1,8 +1,11 @@
 <div align="center">
   <h1><code>glint</code></h1>
 
-  <p><b>A simple CLI for testing your APIs. Define HTTP requests in TOML files and commit them to source control.</b></p>
+  <p><b>A lightweight, local-only scratchpad for testing APIs in your terminal. Define, chain, and automate HTTP requests using simple TOML files—perfect for quick, repeatable tests.</b></p>
 </div>
+
+> [!WARNING]
+> **This project is in its early stages and may undergo many breaking changes in the future.**
 
 ![glint](https://github.com/user-attachments/assets/cc81d961-9a4a-4a0b-8703-6e47cced9762)
 
@@ -10,156 +13,83 @@
 
 - **Chain Multiple HTTP Requests:** Define a sequence of HTTP requests in a `requests.toml` file.
 - **Dynamic Placeholders:** Use placeholders in URLs, headers, and bodies that are resolved at runtime.
-- **Flexible Dependency Resolution:** Resolve placeholders from various sources:
-  - Environment files (TOML files)
+- **Flexible Dependency Resolution:** Resolve placeholders from multiple sources:
+  - Environment Variables
+  - Environment files (TOML)
   - Previous request responses
   - User prompts
-- **Automatic Value Caching:** Save prompted values back to the environment file for future use.
-- **Supports GET and POST Methods:** Easily configure different HTTP methods.
+- **Automatic Value Caching:** Save user-prompted values to the environment file for future use.
+- **Supports GET and POST Methods:** Easily configure HTTP methods in your request definitions.
 
 ## Installation
 
 1. **Clone the Repository:**
 
- ```bash
- git clone git@github.com:johnnyfreeman/glint.git
- cd glint
- ```
+   ```bash
+   git clone git@github.com:johnnyfreeman/glint.git
+   cd glint
+   ```
 
 2. **Build and Install the Application:**
 
- ```bash
- cargo install
- ```
+   ```bash
+   cargo install --path .
+   ```
 
-You can then run `glint` from your terminal.
+You can now run `glint` from your terminal.
 
 ## Usage
 
-### Defining Requests
-
-Create a `requests.toml` file. This file defines the HTTP requests and their dependencies.
-
-**Example `requests.toml`:**
-
-```toml
-[[requests]]
-name = "Get Token"
-method = "POST"
-url = "{url}/token"
-body = '''
-{
-  "name": "{name}",
-  "email": "{email}"
-}
-'''
-[requests.dependencies.url]
-source = "envfile"
-env_file = "my-api-environment.toml"
-key = "url"
-[requests.dependencies.name]
-source = "envfile"
-env_file = "my-api-environment.toml"
-key = "name"
-[requests.dependencies.email]
-source = "envfile"
-env_file = "my-api-environment.toml"
-key = "email"
-
-[[requests]]
-name = "Get Appointments"
-method = "GET"
-url = "{url}/appointments"
-[requests.headers]
-Authorization = "Bearer {token}"
-[requests.dependencies.url]
-source = "envfile"
-env_file = "my-api-environment.toml"
-key = "url"
-[requests.dependencies.token]
-source = "request"
-request = "Get Token"
-path = "$.token"
-[requests.dependencies.id]
-source = "envfile"
-env_file = "my-api-environment.toml"
-key = "id"
-prompt = "Enter appointment ID"
-```
-
-### Defining Environment Variables
-
-Create an `my-api-environment.toml` file containing the necessary variables:
-
-**Example `my-api-environment.toml`:**
-
-```toml
-url = "http://localhost:8000"
-name = "John Doe"
-email = "john.doe@example.com"
-```
-
 ### Running the Application
 
-Run the application:
+To run `glint` with a specific example file, use the following command:
 
 ```bash
-glint
+glint examples/github.toml
 ```
 
-### Behavior
+You can find more examples in the [examples/](examples/) directory.
+
+### Application Behavior
 
 - **Placeholder Resolution:**
   - Placeholders like `{name}` and `{email}` in your requests are replaced with actual values at runtime.
-  - If a value is not found in the specified `env_file`, the application prompts you to enter it.
-  - Entered values are saved back to the `env_file` for future use.
-
+  - If a value is missing in the `env_file`, the application will prompt you to input it, saving it for future use.
+  
 - **Request Execution:**
-  - The application executes requests in the order they are defined in `requests.toml`.
-  - Responses from previous requests can be used to resolve placeholders in subsequent requests.
+  - Requests are executed sequentially, following the order defined in the `requests.toml` file.
+  - You can extract values from previous responses to populate placeholders in subsequent requests.
 
 - **Dependency Handling:**
-  - Supports dependencies of types:
-    - `envfile`: Reads values from a specified TOML file.
-    - `request`: Extracts values from previous request responses.
+  - Dependency sources include:
+    - `envfile`: Reads values from a TOML file.
+    - `request`: Retrieves values from previous request responses.
 
 ## Configuration
 
 ### Request Definition
 
-Each request is defined under the `[[requests]]` table in the `requests.toml` file. The request may include:
+Each request is defined under the `[[requests]]` table in the `requests.toml` file. The request can include the following fields:
 
 - **`name`**: A unique identifier for the request.
-- **`method`**: HTTP method (e.g., `GET`, `POST`).
-- **`url`**: The endpoint URL, which may include placeholders.
+- **`method`**: The HTTP method to use (e.g., `GET`, `POST`).
+- **`url`**: The target URL, which may include placeholders.
 - **`headers`**: Optional HTTP headers.
 - **`body`**: Optional request body, which may include placeholders.
-- **`dependencies`**: A set of dependencies required to resolve placeholders.
+- **`dependencies`**: Dependencies required to resolve placeholders before sending the request.
 
 ### Dependencies
 
-Dependencies specify how to resolve placeholders in the request. The supported dependency sources are:
+Dependencies specify how placeholders should be resolved. Supported sources include:
 
-- **`envfile`**: Reads the value from a specified TOML file.
-  - **`env_file`**: The path to the TOML file.
-  - **`key`**: The key within the TOML file to retrieve.
-  - **`prompt`**: Optional prompt to display if the key is not found.
-- **`request`**: Extracts the value from a previous request's response.
+- **`envfile`**: Reads values from a TOML file.
+  - **`env_file`**: Path to the environment file.
+  - **`key`**: The key to look for in the file.
+  - **`prompt`**: (Optional) Prompt message if the key is not found.
+- **`request`**: Extracts values from a previous request's response.
   - **`request`**: The name of the previous request.
-  - **`path`**: The JSONPath expression to the value in the response (e.g., `$.token`).
+  - **`path`**: The JSONPath expression to extract the value (e.g., `$.token`).
 
 ### Placeholders
 
-Placeholders are denoted by `{placeholder_name}` in the URL, headers, or body of the request. They are resolved at runtime based on the defined dependencies.
-
-## Example
-
-Given the `requests.toml` and `my-api-environment.toml` files above, when you run the application, it will:
-
-1. **Get Token Request:**
-   - Sends a `POST` request to `http://localhost:8000/token` with a JSON body containing your `name` and `email`.
-   - If `name` or `email` are missing in `my-api-environment.toml`, the application prompts you to enter them and saves them to the file.
-
-2. **Get Appointments Request:**
-   - Sends a `GET` request to `http://localhost:8000/appointments`.
-   - Uses the `token` obtained from the `Get Token` request in the `Authorization` header.
+Placeholders, denoted by `{placeholder_name}`, are dynamically resolved from their dependencies at runtime. They can be used in the URL, headers, or body of the request.
