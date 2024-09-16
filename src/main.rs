@@ -6,6 +6,9 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 struct Cli {
     request: String,
+
+    #[arg(long, default_value_t = false)]
+    show_headers: bool,
     // #[arg(short, long, value_name = "FILE")]
     // env: Option<String>,
 
@@ -19,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let requests = request::load_requests_from_toml(cli.request.as_str())?;
 
-    executor::execute_request_chain(requests).await?;
+    executor::execute_request_chain(requests, cli.show_headers).await?;
 
     Ok(())
 }

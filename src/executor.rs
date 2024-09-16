@@ -20,6 +20,7 @@ static ENV_FILES_CACHE: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> =
 
 pub async fn execute_request_chain(
     requests: Vec<Request>,
+    show_headers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut results: HashMap<String, Value> = HashMap::new(); // Store request results by name
     let client = Client::new(); // Create an HTTP client for making requests
@@ -87,21 +88,23 @@ pub async fn execute_request_chain(
         );
         println!("{}", "─".repeat(50)); // Line separator
 
-        // Prepare the headers in a formatted string for pretty printing
-        let mut headers_formatted = String::new();
-        for (key, value) in headers {
-            let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
-            let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
-            headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
-            // Format as key: value without quotes
-        }
+        if show_headers {
+            // Prepare the headers in a formatted string for pretty printing
+            let mut headers_formatted = String::new();
+            for (key, value) in headers {
+                let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
+                let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
+                headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
+                // Format as key: value without quotes
+            }
 
-        // Pretty print the headers
-        PrettyPrinter::new()
-            .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
-            .language("toml") // Print as TOML (or use "yaml" for a similar format)
-            .print()?;
-        println!();
+            // Pretty print the headers
+            PrettyPrinter::new()
+                .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
+                .language("toml") // Print as TOML (or use "yaml" for a similar format)
+                .print()?;
+            println!();
+        }
 
         // Pretty print the body, if it is valid JSON
         if let Ok(pretty_json) =
