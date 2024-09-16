@@ -1,7 +1,7 @@
 <div align="center">
   <h1><code>glint</code></h1>
 
-  <p><b>A lightweight, local-only scratchpad for testing APIs in your terminal. Define, chain, and automate HTTP requests using simple TOML files—perfect for quick, repeatable tests.</b></p>
+  <p><b>A local-only, git-friendly scratchpad for testing API endpoints in your terminal. Define, chain, and automate HTTP requests using simple TOML configuration files.</b></p>
 </div>
 
 > [!WARNING]
