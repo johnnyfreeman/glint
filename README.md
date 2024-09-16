@@ -1,6 +1,10 @@
-# glint
+<div align="center">
+  <h1><code>glint</code></h1>
 
-A simple CLI for testing your APIs. Define HTTP requests in TOML files and commit them to source control.
+  <p><b>A simple CLI for testing your APIs. Define HTTP requests in TOML files and commit them to source control.</b></p>
+</div>
+
+![glint](https://github.com/user-attachments/assets/cc81d961-9a4a-4a0b-8703-6e47cced9762)
 
 ## Features
 
