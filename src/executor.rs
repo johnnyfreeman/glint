@@ -1,3 +1,4 @@
+use crate::options::Options;
 use crate::request::{Dependency, Request};
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
@@ -22,14 +23,50 @@ lazy_static! {
 static ENV_FILES_CACHE: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-pub async fn execute_request_chain(
+pub struct Executor {
     requests: Vec<Request>,
-    show_headers: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut request_resolver = RequestResolver::new();
-    let client = Client::new(); // Create an HTTP client for making requests
+    options: Options,
+    http: Client,
+    request_resolver: RequestResolver,
+}
 
-    for request in requests {
+impl Executor {
+    pub fn new(requests: Vec<Request>, options: Options) -> Self {
+        Self {
+            requests,
+            options,
+            http: Client::new(),
+            request_resolver: RequestResolver::new(),
+        }
+    }
+
+    pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match &self.options.request {
+            Some(request) => {
+                todo!()
+            }
+            None => {
+                for request in &self.requests {
+                    Self::execute_request(
+                        request,
+                        &self.http,
+                        &mut self.request_resolver,
+                        &self.options,
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn execute_request(
+        request: &Request,
+        http: &Client,
+        request_resolver: &mut RequestResolver,
+        options: &Options,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Resolve URL
         let url = resolve_placeholders(&request.url, &request_resolver, &request.dependencies)?;
         let headers = if let Some(header_map) = &request.headers {
@@ -59,7 +96,7 @@ pub async fn execute_request_chain(
         };
 
         // Execute the request and capture the response
-        let res = client
+        let res = http
             .request(
                 reqwest::Method::from_bytes(request.method.as_bytes())?,
                 &url,
@@ -96,7 +133,7 @@ pub async fn execute_request_chain(
         );
         // println!("{}", style("─".repeat(50)).dim());
 
-        if show_headers {
+        if options.show_headers {
             // Prepare the headers in a formatted string for pretty printing
             let mut headers_formatted = String::new();
             for (key, value) in headers {
@@ -137,11 +174,14 @@ pub async fn execute_request_chain(
 
         // Store the response for use in future requests, if applicable
         if let Ok(json) = serde_json::from_str::<Value>(&body_text) {
-            request_resolver.save_to_history(request.name.clone(), json);
+            let _ = &request_resolver.save_to_history(request.name.clone(), json);
         }
+
+        Ok(())
     }
-    Ok(())
 }
+
+// TODO: replace below
 
 fn resolve_placeholders(
     template: &str,

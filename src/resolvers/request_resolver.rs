@@ -22,8 +22,8 @@ impl RequestResolver {
         }
     }
 
-    pub fn save_to_history(&mut self, request: String, response: Value) {
-        self.history.insert(request, response);
+    pub fn save_to_history(&mut self, request: String, response: Value) -> Option<Value> {
+        self.history.insert(request, response)
     }
 }
 
