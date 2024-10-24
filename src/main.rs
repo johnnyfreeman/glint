@@ -1,5 +1,6 @@
 mod executor;
 mod request;
+mod resolvers;
 use clap::Parser;
 
 #[derive(Parser)]

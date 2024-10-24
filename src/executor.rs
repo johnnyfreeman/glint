@@ -1,4 +1,6 @@
 use crate::request::{Dependency, Request};
+use crate::resolvers::request_resolver::RequestResolver;
+use crate::resolvers::Resolver;
 use bat::PrettyPrinter;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
@@ -24,19 +26,19 @@ pub async fn execute_request_chain(
     requests: Vec<Request>,
     show_headers: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut results: HashMap<String, Value> = HashMap::new(); // Store request results by name
+    let mut request_resolver = RequestResolver::new();
     let client = Client::new(); // Create an HTTP client for making requests
 
     for request in requests {
         // Resolve URL
-        let url = resolve_placeholders(&request.url, &results, &request.dependencies)?;
-
-        // Resolve headers
+        let url = resolve_placeholders(&request.url, &request_resolver, &request.dependencies)?;
         let headers = if let Some(header_map) = &request.headers {
             let mut resolved_headers = HeaderMap::new();
             for (key, value) in header_map {
-                let resolved_key = resolve_placeholders(key, &results, &request.dependencies)?;
-                let resolved_value = resolve_placeholders(value, &results, &request.dependencies)?;
+                let resolved_key =
+                    resolve_placeholders(key, &request_resolver, &request.dependencies)?;
+                let resolved_value =
+                    resolve_placeholders(value, &request_resolver, &request.dependencies)?;
                 let header_name = HeaderName::from_bytes(resolved_key.as_bytes())?;
                 resolved_headers.insert(header_name, resolved_value.parse()?);
             }
@@ -49,7 +51,7 @@ pub async fn execute_request_chain(
         let body = if let Some(body_template) = &request.body {
             Some(resolve_placeholders(
                 body_template,
-                &results,
+                &request_resolver,
                 &request.dependencies,
             )?)
         } else {
@@ -135,7 +137,7 @@ pub async fn execute_request_chain(
 
         // Store the response for use in future requests, if applicable
         if let Ok(json) = serde_json::from_str::<Value>(&body_text) {
-            results.insert(request.name.clone(), json); // Store the result in the results map
+            request_resolver.save_to_history(request.name.clone(), json);
         }
     }
     Ok(())
@@ -143,7 +145,7 @@ pub async fn execute_request_chain(
 
 fn resolve_placeholders(
     template: &str,
-    results: &HashMap<String, Value>,
+    request_resolver: &RequestResolver,
     request_dependencies: &Option<HashMap<String, Dependency>>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut resolved = template.to_string();
@@ -157,7 +159,7 @@ fn resolve_placeholders(
             .as_ref()
             .and_then(|deps| deps.get(placeholder))
         {
-            resolve_dependency_value(dep, placeholder, results)?
+            resolve_dependency_value(dep, placeholder, request_resolver)?
         } else {
             return Err(format!("Unable to resolve placeholder: {}", placeholder).into());
         };
@@ -172,7 +174,7 @@ fn resolve_placeholders(
 fn resolve_dependency_value(
     dep: &Dependency,
     _placeholder: &str,
-    results: &HashMap<String, Value>,
+    request_resolver: &RequestResolver,
 ) -> Result<String, Box<dyn std::error::Error>> {
     match dep {
         Dependency::EnvFile {
@@ -214,25 +216,7 @@ fn resolve_dependency_value(
             Ok(file_content.trim().to_string())
         }
         Dependency::Request { request, path } => {
-            if let Some(json) = results.get(request) {
-                if let Some(extracted) = json.pointer(&path) {
-                    if extracted.is_null() {
-                        Err(format!(
-                            "Extracted null value at path '{}' from request '{}'",
-                            path, request
-                        )
-                        .into())
-                    } else if let Some(value_str) = extracted.as_str() {
-                        Ok(value_str.to_string())
-                    } else {
-                        Ok(extracted.to_string())
-                    }
-                } else {
-                    Err(format!("Path '{}' not found in request '{}'", path, request).into())
-                }
-            } else {
-                Err(format!("Request '{}' not found in results", request).into())
-            }
+            Ok(request_resolver.resolve((request.to_owned(), path.to_owned()))?)
         }
         Dependency::Prompt { label } => Ok(prompt_user(label)),
     }
