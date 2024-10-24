@@ -1,8 +1,7 @@
 [[requests]]
 name = "Get Current Weather"
 method = "GET"
-url = "https://api.openweathermap.org/data/2.5/weather"
-query = { q = "{city}", appid = "{api_key}" }
+url = "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
 [requests.headers]
 "Accept" = "application/json"
 [requests.dependencies.city]
@@ -17,15 +16,14 @@ prompt = "Enter your OpenWeatherMap API key"
 [[requests]]
 name = "Get 5-Day Forecast"
 method = "GET"
-url = "https://api.openweathermap.org/data/2.5/forecast"
-query = { lat = "{latitude}", lon = "{longitude}", appid = "{api_key}" }
+url = "https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}"
 [requests.headers]
 "Accept" = "application/json"
-[requests.dependencies.latitude]
+[requests.dependencies.lat]
 source = "request"
 request = "Get Current Weather"
 path = "/coord/lat"
-[requests.dependencies.longitude]
+[requests.dependencies.lon]
 source = "request"
 request = "Get Current Weather"
 path = "/coord/lon"
