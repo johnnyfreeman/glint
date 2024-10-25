@@ -24,7 +24,7 @@ static ENV_FILES_CACHE: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 pub struct Executor {
-    requests: Vec<Request>,
+    requests: HashMap<String, Request>,
     options: Options,
     http: Client,
     request_resolver: RequestResolver,
@@ -33,7 +33,10 @@ pub struct Executor {
 impl Executor {
     pub fn new(requests: Vec<Request>, options: Options) -> Self {
         Self {
-            requests,
+            requests: requests
+                .into_iter()
+                .map(|request| (request.name.clone(), request))
+                .collect(),
             options,
             http: Client::new(),
             request_resolver: RequestResolver::new(),
@@ -43,39 +46,35 @@ impl Executor {
     pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         match &self.options.request {
             Some(request) => {
-                todo!()
+                let cloned_request = self.requests.get(request).expect("Invalid Request").clone();
+                self.execute_request(cloned_request).await?;
             }
             None => {
-                for request in &self.requests {
-                    Self::execute_request(
-                        request,
-                        &self.http,
-                        &mut self.request_resolver,
-                        &self.options,
-                    )
-                    .await?;
+                let cloned_requests: Vec<_> = self.requests.values().cloned().collect();
+
+                for request in cloned_requests {
+                    dbg!(request.clone());
+                    self.execute_request(request).await?;
                 }
             }
         }
-
         Ok(())
     }
 
     pub async fn execute_request(
-        request: &Request,
-        http: &Client,
-        request_resolver: &mut RequestResolver,
-        options: &Options,
+        &mut self,
+        request: Request,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Resolve URL
-        let url = resolve_placeholders(&request.url, &request_resolver, &request.dependencies)?;
+        let url =
+            resolve_placeholders(&request.url, &self.request_resolver, &request.dependencies)?;
         let headers = if let Some(header_map) = &request.headers {
             let mut resolved_headers = HeaderMap::new();
             for (key, value) in header_map {
                 let resolved_key =
-                    resolve_placeholders(key, &request_resolver, &request.dependencies)?;
+                    resolve_placeholders(key, &self.request_resolver, &request.dependencies)?;
                 let resolved_value =
-                    resolve_placeholders(value, &request_resolver, &request.dependencies)?;
+                    resolve_placeholders(value, &self.request_resolver, &request.dependencies)?;
                 let header_name = HeaderName::from_bytes(resolved_key.as_bytes())?;
                 resolved_headers.insert(header_name, resolved_value.parse()?);
             }
@@ -88,7 +87,7 @@ impl Executor {
         let body = if let Some(body_template) = &request.body {
             Some(resolve_placeholders(
                 body_template,
-                &request_resolver,
+                &self.request_resolver,
                 &request.dependencies,
             )?)
         } else {
@@ -96,7 +95,8 @@ impl Executor {
         };
 
         // Execute the request and capture the response
-        let res = http
+        let res = self
+            .http
             .request(
                 reqwest::Method::from_bytes(request.method.as_bytes())?,
                 &url,
@@ -133,7 +133,7 @@ impl Executor {
         );
         // println!("{}", style("─".repeat(50)).dim());
 
-        if options.show_headers {
+        if self.options.show_headers {
             // Prepare the headers in a formatted string for pretty printing
             let mut headers_formatted = String::new();
             for (key, value) in headers {
@@ -174,7 +174,9 @@ impl Executor {
 
         // Store the response for use in future requests, if applicable
         if let Ok(json) = serde_json::from_str::<Value>(&body_text) {
-            let _ = &request_resolver.save_to_history(request.name.clone(), json);
+            let _ = &self
+                .request_resolver
+                .save_to_history(request.name.clone(), json);
         }
 
         Ok(())

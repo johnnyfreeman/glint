@@ -6,7 +6,7 @@ pub struct Config {
     pub requests: Vec<Request>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Request {
     pub name: String,
     pub method: String,
@@ -16,7 +16,7 @@ pub struct Request {
     pub dependencies: Option<HashMap<String, Dependency>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "source", rename_all = "lowercase")]
 pub enum Dependency {
     EnvVar {

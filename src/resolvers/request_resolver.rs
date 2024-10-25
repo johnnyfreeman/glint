@@ -23,6 +23,7 @@ impl RequestResolver {
     }
 
     pub fn save_to_history(&mut self, request: String, response: Value) -> Option<Value> {
+        dbg!(request.clone());
         self.history.insert(request, response)
     }
 }
@@ -32,6 +33,7 @@ impl Resolver for RequestResolver {
     type Error = RequestResolverError;
 
     fn resolve(&self, (request, path): (String, String)) -> Result<String, RequestResolverError> {
+        dbg!(&self.history);
         if let Some(json) = self.history.get(&request) {
             if let Some(extracted) = json.pointer(&path) {
                 if extracted.is_null() {
