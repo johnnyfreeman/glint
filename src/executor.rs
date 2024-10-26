@@ -23,6 +23,7 @@ lazy_static! {
 static ENV_FILES_CACHE: Lazy<Mutex<HashMap<String, HashMap<String, String>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+#[derive(Debug)]
 pub struct Executor {
     requests: HashMap<String, Request>,
     options: Options,
@@ -43,6 +44,7 @@ impl Executor {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         match &self.options.request {
             Some(request) => {
@@ -53,7 +55,6 @@ impl Executor {
                 let cloned_requests: Vec<_> = self.requests.values().cloned().collect();
 
                 for request in cloned_requests {
-                    dbg!(request.clone());
                     self.execute_request(request).await?;
                 }
             }
@@ -61,6 +62,7 @@ impl Executor {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn execute_request(
         &mut self,
         request: Request,
@@ -185,6 +187,7 @@ impl Executor {
 
 // TODO: replace below
 
+#[tracing::instrument(skip(request_resolver))]
 fn resolve_placeholders(
     template: &str,
     request_resolver: &RequestResolver,
@@ -213,6 +216,7 @@ fn resolve_placeholders(
     Ok(resolved)
 }
 
+#[tracing::instrument(skip(request_resolver))]
 fn resolve_dependency_value(
     dep: &Dependency,
     _placeholder: &str,
@@ -264,6 +268,7 @@ fn resolve_dependency_value(
     }
 }
 
+#[tracing::instrument]
 fn load_env_file(env_file: &str) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
     let mut cache = ENV_FILES_CACHE.lock().unwrap();
 
@@ -278,6 +283,7 @@ fn load_env_file(env_file: &str) -> Result<HashMap<String, String>, Box<dyn std:
     }
 }
 
+#[tracing::instrument(skip(data))]
 fn save_env_file(
     env_file: &str,
     data: &HashMap<String, String>,
@@ -287,6 +293,7 @@ fn save_env_file(
     Ok(())
 }
 
+#[tracing::instrument]
 fn prompt_user(prompt: &str) -> String {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)

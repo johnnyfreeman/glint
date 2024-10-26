@@ -40,6 +40,7 @@ pub enum Dependency {
     },
 }
 
+#[tracing::instrument]
 pub fn load_requests_from_toml(file: &str) -> Result<Vec<Request>, Box<dyn std::error::Error>> {
     let content = std::fs::read_to_string(file)?;
     let config: Config = toml::from_str(&content)?;

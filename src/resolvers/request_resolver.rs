@@ -2,6 +2,7 @@ use super::Resolver;
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
+use tracing::info;
 
 #[derive(Error, Debug)]
 pub enum RequestResolverError {
@@ -11,6 +12,7 @@ pub enum RequestResolverError {
     InvalidPath { path: String, request: String },
 }
 
+#[derive(Debug)]
 pub struct RequestResolver {
     history: HashMap<String, Value>,
 }
@@ -22,8 +24,9 @@ impl RequestResolver {
         }
     }
 
+    #[tracing::instrument]
     pub fn save_to_history(&mut self, request: String, response: Value) -> Option<Value> {
-        dbg!(request.clone());
+        info!("{}", request.clone());
         self.history.insert(request, response)
     }
 }
@@ -32,8 +35,9 @@ impl Resolver for RequestResolver {
     type Arguments = (String, String);
     type Error = RequestResolverError;
 
+    #[tracing::instrument]
     fn resolve(&self, (request, path): (String, String)) -> Result<String, RequestResolverError> {
-        dbg!(&self.history);
+        info!("{:?}", &self.history);
         if let Some(json) = self.history.get(&request) {
             if let Some(extracted) = json.pointer(&path) {
                 if extracted.is_null() {
