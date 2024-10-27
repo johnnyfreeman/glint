@@ -6,8 +6,8 @@ use tracing::info;
 
 #[derive(Error, Debug)]
 pub enum RequestResolverError {
-    #[error("Request `{request:?}` is not a valid request")]
-    InvalidRequest { request: String },
+    #[error("Request `{request:?}` was not found in history")]
+    RequestNotFound { request: String },
     #[error("Path `{path:?}` not found in request {request:?}")]
     InvalidPath { path: String, request: String },
 }
@@ -51,7 +51,7 @@ impl Resolver for RequestResolver {
                 Err(RequestResolverError::InvalidPath { path, request })
             }
         } else {
-            Err(RequestResolverError::InvalidRequest { request })
+            Err(RequestResolverError::RequestNotFound { request })
         }
     }
 }
