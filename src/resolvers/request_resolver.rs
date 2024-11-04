@@ -26,7 +26,7 @@ impl RequestResolver {
 
     #[tracing::instrument]
     pub fn save_to_history(&mut self, request: String, response: Value) -> Option<Value> {
-        info!("{}", request.clone());
+        info!("Saving response for {} to history", request.clone());
         self.history.insert(request, response)
     }
 }
