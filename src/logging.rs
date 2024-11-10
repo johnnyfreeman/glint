@@ -4,6 +4,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 pub fn init_logging() -> Result<WorkerGuard> {
+    // TODO: production build should use "/var/logs/glint" for logging path
     let file_appender = tracing_appender::rolling::daily(".", "glint.log");
 
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
