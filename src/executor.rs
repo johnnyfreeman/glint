@@ -1,5 +1,6 @@
 use crate::options::Options;
 use crate::request::{Dependency, Request};
+use crate::resolvers::env_var_resolver::EnvVarResolver;
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
 use bat::PrettyPrinter;
@@ -40,6 +41,7 @@ pub struct Executor {
     options: Options,
     http: Client,
     request_resolver: RequestResolver,
+    env_var_resolver: EnvVarResolver,
 }
 
 impl Executor {
@@ -52,6 +54,7 @@ impl Executor {
             options,
             http: Client::new(),
             request_resolver: RequestResolver::new(),
+            env_var_resolver: EnvVarResolver::new(),
         }
     }
 
@@ -284,10 +287,13 @@ impl Executor {
                 }
             }
             Dependency::EnvVar { name, prompt } => {
-                if let Ok(env_value) = std::env::var(name) {
+                if let Ok(env_value) = self.env_var_resolver.resolve(name.to_owned()) {
                     Ok(env_value)
                 } else if let Some(prompt) = prompt {
-                    Ok(prompt_user(prompt))
+                    let value = prompt_user(prompt);
+                    self.env_var_resolver
+                        .save_to_cache(name.clone(), value.clone());
+                    Ok(value)
                 } else {
                     Err(format!("Environment variable '{}' not found", name).into())
                 }
@@ -297,27 +303,28 @@ impl Executor {
                 Ok(file_content.trim().to_string())
             }
             Dependency::Request { request, path } => {
-                // TODO: Resolve fresh request if this fails
-                match self
+                // Check if the request is already resolved
+                if let Ok(value) = self
                     .request_resolver
-                    .resolve((request.to_owned(), path.to_owned()))
+                    .resolve((request.clone(), path.clone()))
                 {
-                    Ok(value) => Ok(value),
-                    Err(_) => {
-                        let cloned_request = self
-                            .requests
-                            .get(request)
-                            .ok_or(ExecutionError::RequestNotFound {
-                                request: request.to_owned(),
-                            })?
-                            .clone();
-                        Box::pin(self.execute_request(cloned_request)).await?;
-
-                        Ok(self
-                            .request_resolver
-                            .resolve((request.to_owned(), path.to_owned()))?)
-                    }
+                    return Ok(value);
                 }
+
+                // TODO: Resolve fresh request if this fails
+                let cloned_request = self
+                    .requests
+                    .get(request)
+                    .ok_or(ExecutionError::RequestNotFound {
+                        request: request.to_owned(),
+                    })?
+                    .clone();
+
+                Box::pin(self.execute_request(cloned_request)).await?;
+
+                Ok(self
+                    .request_resolver
+                    .resolve((request.to_owned(), path.to_owned()))?)
             }
             Dependency::Prompt { label } => Ok(prompt_user(label)),
         }

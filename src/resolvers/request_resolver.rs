@@ -36,7 +36,10 @@ impl Resolver for RequestResolver {
     type Error = RequestResolverError;
 
     #[tracing::instrument]
-    fn resolve(&self, (request, path): (String, String)) -> Result<String, RequestResolverError> {
+    fn resolve(
+        &mut self,
+        (request, path): (String, String),
+    ) -> Result<String, RequestResolverError> {
         info!("{:?}", &self.history);
         if let Some(json) = self.history.get(&request) {
             if let Some(extracted) = json.pointer(&path) {
