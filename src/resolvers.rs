@@ -1,4 +1,5 @@
 pub mod env_var_resolver;
+pub mod prompt_resolver;
 pub mod request_resolver;
 
 pub trait Resolver {

@@ -1,12 +1,11 @@
 use crate::options::Options;
 use crate::request::{Dependency, Request};
 use crate::resolvers::env_var_resolver::EnvVarResolver;
+use crate::resolvers::prompt_resolver::PromptResolver;
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
 use bat::PrettyPrinter;
 use console::style;
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::Input;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -40,8 +39,9 @@ pub struct Executor {
     requests: HashMap<String, Request>,
     options: Options,
     http: Client,
-    request_resolver: RequestResolver,
     env_var_resolver: EnvVarResolver,
+    prompt_resolver: PromptResolver,
+    request_resolver: RequestResolver,
 }
 
 impl Executor {
@@ -53,8 +53,9 @@ impl Executor {
                 .collect(),
             options,
             http: Client::new(),
-            request_resolver: RequestResolver::new(),
             env_var_resolver: EnvVarResolver::new(),
+            prompt_resolver: PromptResolver::new(),
+            request_resolver: RequestResolver::new(),
         }
     }
 
@@ -273,7 +274,7 @@ impl Executor {
                     Ok(value.clone())
                 } else if let Some(prompt) = prompt {
                     // Prompt the user
-                    let value = prompt_user(prompt);
+                    let value = self.prompt_resolver.resolve(prompt.clone())?;
                     // Optionally, save the value back to the env file or cache
                     env_data.insert(key.clone(), value.clone());
                     // Save back to the file
@@ -287,13 +288,11 @@ impl Executor {
                 }
             }
             Dependency::EnvVar { name, prompt } => {
-                if let Ok(env_value) = self.env_var_resolver.resolve(name.to_owned()) {
+                if let Ok(env_value) = self
+                    .env_var_resolver
+                    .resolve((name.to_owned(), prompt.clone()))
+                {
                     Ok(env_value)
-                } else if let Some(prompt) = prompt {
-                    let value = prompt_user(prompt);
-                    self.env_var_resolver
-                        .save_to_cache(name.clone(), value.clone());
-                    Ok(value)
                 } else {
                     Err(format!("Environment variable '{}' not found", name).into())
                 }
@@ -326,7 +325,7 @@ impl Executor {
                     .request_resolver
                     .resolve((request.to_owned(), path.to_owned()))?)
             }
-            Dependency::Prompt { label } => Ok(prompt_user(label)),
+            Dependency::Prompt { label } => Ok(self.prompt_resolver.resolve(label.clone())?),
         }
     }
 }
@@ -352,11 +351,4 @@ fn save_env_file(
     let content = toml::to_string(data)?;
     std::fs::write(env_file, content)?;
     Ok(())
-}
-
-fn prompt_user(prompt: &str) -> String {
-    Input::with_theme(&ColorfulTheme::default())
-        .with_prompt(prompt)
-        .interact_text()
-        .unwrap()
 }
