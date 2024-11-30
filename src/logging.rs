@@ -13,8 +13,8 @@ pub fn init_logging() -> Result<WorkerGuard> {
 
     let registry = tracing_subscriber::registry().with(
         fmt::layer()
-            .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::EXIT)
-            .event_format(fmt::format().pretty())
+            // .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::EXIT)
+            .event_format(fmt::format().compact())
             .with_writer(non_blocking)
             .with_filter(filter),
     );

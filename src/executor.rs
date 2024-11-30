@@ -55,7 +55,6 @@ impl Executor {
         }
     }
 
-    #[tracing::instrument(skip(self))]
     pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         match &self.options.request {
             Some(request) => {
@@ -79,7 +78,6 @@ impl Executor {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
     pub async fn execute_request(&mut self, request: Request) -> Result<(), ExecutionError> {
         // Resolve URL
         let url = self
@@ -226,7 +224,6 @@ impl Executor {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
     async fn resolve_placeholders(
         &mut self,
         template: &str,
@@ -255,7 +252,6 @@ impl Executor {
         Ok(resolved)
     }
 
-    #[tracing::instrument(skip(self))]
     async fn resolve_dependency_value(
         &mut self,
         dep: &Dependency,
@@ -328,7 +324,6 @@ impl Executor {
     }
 }
 
-#[tracing::instrument]
 fn load_env_file(env_file: &str) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
     let mut cache = ENV_FILES_CACHE.lock().unwrap();
 
@@ -343,7 +338,6 @@ fn load_env_file(env_file: &str) -> Result<HashMap<String, String>, Box<dyn std:
     }
 }
 
-#[tracing::instrument(skip(data))]
 fn save_env_file(
     env_file: &str,
     data: &HashMap<String, String>,
@@ -353,7 +347,6 @@ fn save_env_file(
     Ok(())
 }
 
-#[tracing::instrument]
 fn prompt_user(prompt: &str) -> String {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
