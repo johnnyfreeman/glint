@@ -11,7 +11,7 @@
 
 ## Features
 
-- **Chain Multiple HTTP Requests:** Define a sequence of HTTP requests in a `requests.toml` file.
+- **Http Request Collections:** Define collections of HTTP requests in a `requests.toml` file.
 - **Dynamic Placeholders:** Use placeholders in URLs, headers, and bodies that are resolved at runtime.
 - **Flexible Dependency Resolution:** Resolve placeholders from multiple sources:
   - Environment Variables
@@ -65,6 +65,7 @@ You can find more examples in the [examples/](examples/) directory.
 - **Dependency Handling:**
   - Dependency sources include:
     - `envfile`: Reads values from a TOML file.
+    - `envvar`: Reads values from environment variables.
     - `request`: Retrieves values from previous request responses.
     - `onepassword`: Retrieves values from a 1Password vault.
 
@@ -89,6 +90,9 @@ Dependencies specify how placeholders should be resolved. Supported sources incl
   - **`env_file`**: Path to the environment file.
   - **`key`**: The key to look for in the file.
   - **`prompt`**: (Optional) Prompt message if the key is not found.
+- **`envvar`**: Reads values from a TOML file.
+  - **`name`**: The environment variable name.
+  - **`prompt`**: (Optional) Prompt message if the variable is not found.
 - **`request`**: Extracts values from a previous request's response.
   - **`request`**: The name of the previous request.
   - **`path`**: The JSONPath expression to extract the value (e.g., `$.token`).
