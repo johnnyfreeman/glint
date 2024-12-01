@@ -11,96 +11,97 @@
 
 ## Features
 
-- **Http Request Collections:** Define collections of HTTP requests in a `requests.toml` file.
-- **Dynamic Placeholders:** Use placeholders in URLs, headers, and bodies that are resolved at runtime.
-- **Flexible Dependency Resolution:** Resolve placeholders from multiple sources:
+- **Local-Only Design**: Glint keeps everything local. That means your files are yours, perfect for testing without worrying about data going to the cloud.
+- **Versioning and Sharing**: Since everything is just regular files, you can easily version and share them with Git. Keep a history of your requests and share them with your team so everyone's on the same page.
+- **HTTP Request Collections:** You can put together collections of HTTP requests in a `requests.toml` file.
+- **Dynamic Placeholders:** Use placeholders in your URLs, headers, and bodies, and they'll get filled in at runtime.
+- **Flexible Dependency Resolution:** Fill in placeholders from lots of different sources:
   - Environment Variables
   - Environment files (TOML)
   - Previous request responses
   - User prompts
   - 1Password vaults
-- **Automatic Value Caching:** Save user-prompted values to the environment file for future use.
-- **Supports All HTTP Methods:** Easily configure HTTP methods in your request definitions.
+- **Automatic Value Caching:** If glint prompts you for a value, it gets stored in memory so you don't have to type it in again for follow-up requests.
+- **Supports All HTTP Methods:** You can use any HTTP method you need in your request definitions.
+
+## Usage
+
+### Running the Application
+
+To run `glint` with an example file, just use this command:
+
+```bash
+glint examples/github.toml
+```
+
+You can check out some examples in the [examples/](examples/) directory.
+
+### How It Works
+
+- **Placeholder Resolution:**
+
+  - Placeholders like `{name}` and `{email}` get replaced with actual values at runtime.
+  - If we can't find a value in your `env_file`, we'll ask you for it and save it for next time.
+  - You can also use 1Password credentials to fill in placeholders for extra security.
+
+- **Request Execution:**
+
+  - Requests run one after the other, in the order they're listed in your `requests.toml` file.
+  - You can use values from previous responses to fill in placeholders in later requests.
+
+- **Handling Dependencies:**
+
+  - We support a bunch of different dependency sources:
+    - `envvar`: Get values from environment variables.
+    - `envfile`: Get values from a TOML config file.
+    - `request`: Use values from earlier request responses.
+    - `onepassword`: Grab values from a 1Password vault.
+
+## Configuration
+
+### Defining Requests
+
+Each request is defined under the `[[requests]]` section in your `.toml` request collection file. Here's what you can include:
+
+- **`name`**: A unique name for your request.
+- **`method`**: The HTTP method (like `GET`, `POST`, etc.).
+- **`url`**: The URL you're hitting, which can have placeholders.
+- **`headers`**: Any headers you need to add.
+- **`body`**: The request body, which can also have placeholders.
+- **`dependencies`**: Dynamic values you need to resolve before sending the request.
+
+### Dependencies
+
+Dependencies tell us how to fill in placeholders. Here's what we support:
+
+- **`envvar`**: Get values from environment variables.
+  - **`name`**: The name of the environment variable.
+  - **`prompt`**: (Optional) What to ask you if the variable isn't defined.
+- **`envfile`**: Get values from a TOML config file.
+  - **`env_file`**: Path to the environment file.
+  - **`key`**: The key to look up in the file.
+  - **`prompt`**: (Optional) What to ask you if the key isn't found.
+- **`request`**: Get the value from the response to another request.
+  - **`request`**: The name of the other request.
+  - **`path`**: JSON Pointer to grab the value (e.g., `/token`).
+- **`onepassword`**: Get securely stored values from 1Password.
+  - **`vault`**: The name of the vault.
+  - **`item`**: The item name or identifier.
+  - **`field`**: The specific field to use.
 
 ## Installation
 
-1. **Clone the Repository:**
+1. **Clone the Repo:**
 
    ```bash
    git clone git@github.com:johnnyfreeman/glint.git
    cd glint
    ```
 
-2. **Build and Install the Application:**
+2. **Build and Install Glint:**
 
    ```bash
    cargo install --path .
    ```
 
-You can now run `glint` from your terminal.
-
-## Usage
-
-### Running the Application
-
-To run `glint` with a specific example file, use the following command:
-
-```bash
-glint examples/github.toml
-```
-
-You can find more examples in the [examples/](examples/) directory.
-
-### Application Behavior
-
-- **Placeholder Resolution:**
-  - Placeholders like `{name}` and `{email}` in your requests are replaced with actual values at runtime.
-  - If a value is missing in the `env_file`, the application will prompt you to input it, saving it for future use.
-  - Placeholders can also be resolved using 1Password credentials for added security.
-
-- **Request Execution:**
-  - Requests are executed sequentially, following the order defined in the `requests.toml` file.
-  - You can extract values from previous responses to populate placeholders in subsequent requests.
-
-- **Dependency Handling:**
-  - Dependency sources include:
-    - `envfile`: Reads values from a TOML file.
-    - `envvar`: Reads values from environment variables.
-    - `request`: Retrieves values from previous request responses.
-    - `onepassword`: Retrieves values from a 1Password vault.
-
-## Configuration
-
-### Request Definition
-
-Each request is defined under the `[[requests]]` table in the `requests.toml` file. The request can include the following fields:
-
-- **`name`**: A unique identifier for the request.
-- **`method`**: The HTTP method to use (e.g., `GET`, `POST`).
-- **`url`**: The target URL, which may include placeholders.
-- **`headers`**: Optional HTTP headers.
-- **`body`**: Optional request body, which may include placeholders.
-- **`dependencies`**: Dependencies required to resolve placeholders before sending the request.
-
-### Dependencies
-
-Dependencies specify how placeholders should be resolved. Supported sources include:
-
-- **`envfile`**: Reads values from a TOML file.
-  - **`env_file`**: Path to the environment file.
-  - **`key`**: The key to look for in the file.
-  - **`prompt`**: (Optional) Prompt message if the key is not found.
-- **`envvar`**: Reads values from a TOML file.
-  - **`name`**: The environment variable name.
-  - **`prompt`**: (Optional) Prompt message if the variable is not found.
-- **`request`**: Extracts values from a previous request's response.
-  - **`request`**: The name of the previous request.
-  - **`path`**: The JSONPath expression to extract the value (e.g., `$.token`).
-- **`onepassword`**: Retrieves values from a 1Password vault.
-  - **`vault`**: The name of the vault where the value is stored.
-  - **`item`**: The item name or identifier containing the value.
-  - **`field`**: The specific field within the item to use.
-
-### Placeholders
-
-Placeholders, denoted by `{placeholder_name}`, are dynamically resolved from their dependencies at runtime. They can be used in the URL, headers, or body of the request.
+And that's it! You can now use `glint` from your terminal.
