@@ -1,6 +1,7 @@
 use crate::options::Options;
 use crate::request::{Dependency, Request};
 use crate::resolvers::env_var_resolver::EnvVarResolver;
+use crate::resolvers::one_password_resolver::OnePasswordResolver;
 use crate::resolvers::prompt_resolver::PromptResolver;
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
@@ -43,6 +44,7 @@ pub struct Executor {
     env_var_resolver: EnvVarResolver,
     prompt_resolver: PromptResolver,
     request_resolver: RequestResolver,
+    one_password_resolver: OnePasswordResolver,
 }
 
 impl Executor {
@@ -57,6 +59,7 @@ impl Executor {
             env_var_resolver: EnvVarResolver::new(),
             prompt_resolver: PromptResolver::new(),
             request_resolver: RequestResolver::new(),
+            one_password_resolver: OnePasswordResolver::new(),
         }
     }
 
@@ -305,6 +308,16 @@ impl Executor {
                     Ok(env_value)
                 } else {
                     Err(format!("Environment variable '{}' not found", name).into())
+                }
+            }
+            Dependency::OnePassword { vault, item, field } => {
+                if let Ok(value) =
+                    self.one_password_resolver
+                        .resolve((vault.clone(), item.clone(), field.clone()))
+                {
+                    Ok(value)
+                } else {
+                    Err(format!("1Password variable '{}' not found", vault).into())
                 }
             }
             Dependency::File { path } => {

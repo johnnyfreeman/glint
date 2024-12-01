@@ -18,6 +18,7 @@
   - Environment files (TOML)
   - Previous request responses
   - User prompts
+  - 1Password vaults
 - **Automatic Value Caching:** Save user-prompted values to the environment file for future use.
 - **Supports GET and POST Methods:** Easily configure HTTP methods in your request definitions.
 
@@ -55,7 +56,8 @@ You can find more examples in the [examples/](examples/) directory.
 - **Placeholder Resolution:**
   - Placeholders like `{name}` and `{email}` in your requests are replaced with actual values at runtime.
   - If a value is missing in the `env_file`, the application will prompt you to input it, saving it for future use.
-  
+  - Placeholders can also be resolved using 1Password credentials for added security.
+
 - **Request Execution:**
   - Requests are executed sequentially, following the order defined in the `requests.toml` file.
   - You can extract values from previous responses to populate placeholders in subsequent requests.
@@ -64,6 +66,7 @@ You can find more examples in the [examples/](examples/) directory.
   - Dependency sources include:
     - `envfile`: Reads values from a TOML file.
     - `request`: Retrieves values from previous request responses.
+    - `onepassword`: Retrieves values from a 1Password vault.
 
 ## Configuration
 
@@ -89,6 +92,10 @@ Dependencies specify how placeholders should be resolved. Supported sources incl
 - **`request`**: Extracts values from a previous request's response.
   - **`request`**: The name of the previous request.
   - **`path`**: The JSONPath expression to extract the value (e.g., `$.token`).
+- **`onepassword`**: Retrieves values from a 1Password vault.
+  - **`vault`**: The name of the vault where the value is stored.
+  - **`item`**: The item name or identifier containing the value.
+  - **`field`**: The specific field within the item to use.
 
 ### Placeholders
 

@@ -28,6 +28,11 @@ pub enum Dependency {
         key: String,
         prompt: Option<String>,
     },
+    OnePassword {
+        vault: String,
+        item: String,
+        field: String,
+    },
     File {
         path: String,
     },
