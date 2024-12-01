@@ -9,9 +9,10 @@ source = "envvar"
 name = "CITY"
 prompt = "Enter the city name"
 [requests.dependencies.api_key]
-source = "envvar"
-name = "OPENWEATHER_API_KEY"
-prompt = "Enter your OpenWeatherMap API key"
+source = "onepassword"
+vault = "Private"
+item = "OpenWeather"
+field = "api-key"
 
 [[requests]]
 name = "Get 5-Day Forecast"
@@ -28,5 +29,7 @@ source = "request"
 request = "Get Current Weather"
 path = "/coord/lon"
 [requests.dependencies.api_key]
-source = "envvar"
-name = "OPENWEATHER_API_KEY"
+source = "onepassword"
+vault = "Private"
+item = "OpenWeather"
+field = "api-key"
