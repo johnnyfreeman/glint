@@ -20,7 +20,7 @@
   - User prompts
   - 1Password vaults
 - **Automatic Value Caching:** Save user-prompted values to the environment file for future use.
-- **Supports GET and POST Methods:** Easily configure HTTP methods in your request definitions.
+- **Supports All HTTP Methods:** Easily configure HTTP methods in your request definitions.
 
 ## Installation
 
