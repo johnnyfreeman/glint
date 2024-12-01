@@ -3,6 +3,7 @@ mod logging;
 mod options;
 mod request;
 mod resolvers;
+mod response;
 use clap::Parser;
 use executor::Executor;
 use logging::init_logging;

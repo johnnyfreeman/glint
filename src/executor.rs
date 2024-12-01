@@ -4,6 +4,7 @@ use crate::resolvers::env_var_resolver::EnvVarResolver;
 use crate::resolvers::prompt_resolver::PromptResolver;
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
+use crate::response::Response;
 use bat::PrettyPrinter;
 use console::style;
 use lazy_static::lazy_static;
@@ -61,34 +62,39 @@ impl Executor {
 
     pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         match &self.options.request {
-            Some(request) => {
-                let cloned_request = self
+            Some(request_name) => {
+                let request = self
                     .requests
-                    .get(request)
+                    .get(request_name)
                     .ok_or(ExecutionError::RequestNotFound {
-                        request: request.to_owned(),
+                        request: request_name.to_owned(),
                     })?
                     .clone();
-                self.execute_request(cloned_request).await?;
+
+                let response = self.execute_request(request.clone()).await?;
+
+                self.render_output(response).await?;
             }
             None => {
                 let cloned_requests: Vec<_> = self.requests.values().cloned().collect();
 
                 for request in cloned_requests {
-                    self.execute_request(request).await?;
+                    let response = self.execute_request(request.clone()).await?;
+
+                    self.render_output(response).await?;
                 }
             }
         }
         Ok(())
     }
 
-    pub async fn execute_request(&mut self, request: Request) -> Result<(), ExecutionError> {
+    pub async fn execute_request(&mut self, request: Request) -> Result<Response, ExecutionError> {
         // Resolve URL
         let url = self
             .resolve_placeholders(&request.url, &request.dependencies)
             .await
             .map_err(|_| ExecutionError::ResolutionFailed {
-                template: request.url,
+                template: request.url.clone(),
             })?;
         let headers = if let Some(header_map) = &request.headers {
             let mut resolved_headers = HeaderMap::new();
@@ -135,7 +141,7 @@ impl Executor {
         };
 
         // Execute the request and capture the response
-        let res = self
+        let response = self
             .http
             .request(
                 reqwest::Method::from_bytes(request.method.as_bytes())
@@ -148,29 +154,40 @@ impl Executor {
             .await
             .map_err(|_| ExecutionError::Unknown)?;
 
-        // Extract the headers first, since `res.text()` will consume `res`
-        let headers: HeaderMap = res.headers().clone(); // Clone the headers to avoid borrowing issues
+        let response = Response {
+            request: request.clone(),
+            headers: response.headers().clone(),
+            status: response.status(),
+            text: response.text().await.map_err(|_| ExecutionError::Unknown)?,
+        };
 
-        // Now you can safely consume the body
-        let status = res.status();
-        let body_text = res.text().await.map_err(|_| ExecutionError::Unknown)?;
+        // Store the response for use in future requests, if applicable
+        if let Ok(json) = serde_json::from_str::<Value>(&response.text) {
+            let _ = &self
+                .request_resolver
+                .save_to_history(request.name.clone(), json);
+        }
 
+        Ok(response)
+    }
+
+    async fn render_output(&mut self, response: Response) -> Result<(), ExecutionError> {
         println!(
             "\n{} {}",
-            if let true = status.is_client_error() {
-                style(" ".to_string() + status.as_str() + " ")
+            if let true = response.status.is_client_error() {
+                style(" ".to_string() + response.status.as_str() + " ")
                     .on_yellow()
                     .black()
-            } else if let true = status.is_server_error() {
-                style(" ".to_string() + status.as_str() + " ")
+            } else if let true = response.status.is_server_error() {
+                style(" ".to_string() + response.status.as_str() + " ")
                     .on_red()
                     .black()
             } else {
-                style(" ".to_string() + status.as_str() + " ")
+                style(" ".to_string() + response.status.as_str() + " ")
                     .on_green()
                     .black()
             },
-            style(&request.name).bold(),
+            style(&response.request.name).bold(),
             // status.canonical_reason().unwrap_or(""),
         );
         // println!("{}", style("─".repeat(50)).dim());
@@ -178,7 +195,7 @@ impl Executor {
         if self.options.show_headers {
             // Prepare the headers in a formatted string for pretty printing
             let mut headers_formatted = String::new();
-            for (key, value) in headers {
+            for (key, value) in response.headers {
                 let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
                 let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
                 headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
@@ -199,7 +216,7 @@ impl Executor {
 
         // Pretty print the body, if it is valid JSON
         if let Ok(pretty_json) = serde_json::to_string_pretty(
-            &serde_json::from_str::<serde_json::Value>(&body_text)
+            &serde_json::from_str::<serde_json::Value>(&response.text)
                 .map_err(|_| ExecutionError::Unknown)?,
         ) {
             PrettyPrinter::new()
@@ -211,18 +228,11 @@ impl Executor {
         } else {
             // If it's not JSON, print the raw body as plain text
             PrettyPrinter::new()
-                .input_from_bytes(body_text.as_bytes()) // Use raw body text
+                .input_from_bytes(response.text.as_bytes()) // Use raw body text
                 .language("plain") // Print as plain text
                 .print()
                 .map_err(|_| ExecutionError::Unknown)?;
             println!();
-        }
-
-        // Store the response for use in future requests, if applicable
-        if let Ok(json) = serde_json::from_str::<Value>(&body_text) {
-            let _ = &self
-                .request_resolver
-                .save_to_history(request.name.clone(), json);
         }
 
         Ok(())
