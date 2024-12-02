@@ -30,6 +30,16 @@ glint examples/github.toml
 
 You can check out some examples in the [examples/](examples/) directory.
 
+### Running with Docker
+
+To run `glint` using Docker, use the following command:
+
+```bash
+docker run --rm -v $(pwd)/examples:/glint johnnyfreeman/glint examples/github.toml
+```
+
+This command mounts your local `examples` directory to the container, allowing Glint to access the example request collections.
+
 ### How It Works
 
 - **Placeholder Resolution:**
@@ -98,6 +108,18 @@ Dependencies tell us how to fill in placeholders. Here's what we support:
    cargo install --path .
    ```
 
-And that's it! You can now use `glint` from your terminal.
+3. **Using Docker:**
 
+   To build the Docker image, use the following command:
 
+   ```bash
+   docker build -t johnnyfreeman/glint .
+   ```
+
+   To run Glint using Docker, use:
+
+   ```bash
+   docker run --rm -v $(pwd)/examples:/glint johnnyfreeman/glint examples/weather.toml
+   ```
+
+And that's it! You can now use `glint` from your terminal or within a Docker container.
