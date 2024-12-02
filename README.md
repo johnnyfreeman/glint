@@ -1,7 +1,13 @@
+<div align="center">
+  <h1><code>glint</code></h1>
+
+  <p><b>A local-only, git-friendly scratchpad for testing API endpoints in your terminal. Define, chain, and automate HTTP requests using simple TOML configuration files.</b></p>
+</div>
+
 > [!WARNING]
 > **This project is in its early stages and may undergo many breaking changes in the future.**
 
-
+![glint](https://github.com/user-attachments/assets/cc81d961-9a4a-4a0b-8703-6e47cced9762)
 
 ## Features
 
@@ -123,3 +129,5 @@ Dependencies tell us how to fill in placeholders. Here's what we support:
    ```
 
 And that's it! You can now use `glint` from your terminal or within a Docker container.
+
+
