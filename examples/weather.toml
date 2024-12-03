@@ -5,11 +5,11 @@ url = "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
 [requests.headers]
 "Accept" = "application/json"
 [requests.dependencies.city]
-source = "envvar"
+source = "EnvVar"
 name = "CITY"
 prompt = "Enter the city name"
 [requests.dependencies.api_key]
-source = "onepassword"
+source = "OnePassword"
 vault = "Private"
 item = "OpenWeather"
 field = "api-key"
@@ -29,7 +29,7 @@ source = "Response"
 request = "Get Current Weather"
 target = { source = "JsonBody", pointer = "/coord/lon" }
 [requests.dependencies.api_key]
-source = "onepassword"
+source = "OnePassword"
 vault = "Private"
 item = "OpenWeather"
 field = "api-key"

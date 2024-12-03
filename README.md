@@ -64,7 +64,7 @@ This command mounts your local `examples` directory to the container, allowing G
   - We support a bunch of different dependency sources:
     - `envvar`: Get values from environment variables.
     - `envfile`: Get values from a TOML config file.
-    - `request`: Use values from earlier request responses.
+    - `response`: Use values from earlier request responses.
     - `onepassword`: Grab values from a 1Password vault.
 
 ## Configuration
@@ -84,17 +84,20 @@ Each request is defined under the `[[requests]]` section in your `.toml` request
 
 Dependencies tell us how to fill in placeholders. Here's what we support:
 
-- **`envvar`**: Get values from environment variables.
+- **`EnvVar`**: Get values from environment variables.
   - **`name`**: The name of the environment variable.
   - **`prompt`**: (Optional) What to ask you if the variable isn't defined.
-- **`envfile`**: Get values from a TOML config file.
+- **`EnvFile`**: Get values from a TOML config file.
   - **`env_file`**: Path to the environment file.
   - **`key`**: The key to look up in the file.
   - **`prompt`**: (Optional) What to ask you if the key isn't found.
-- **`request`**: Get the value from the response to another request.
+- **`Response`**: Get the value from the response to another request.
   - **`request`**: The name of the other request.
-  - **`path`**: JSON Pointer to grab the value (e.g., `/token`).
-- **`onepassword`**: Get securely stored values from 1Password.
+  - **`target`**: JSON Pointer to grab the value (e.g., `/token`).
+    - **`source`**: Either `JsonBody` or `HeaderValue`.
+    - **`pointer`**: A JSON Pointer string if targeting `JsonBody`.
+    - **`key`**: A header key if targeting `HeaderValue`.
+- **`OnePassword`**: Get securely stored values from 1Password.
   - **`vault`**: The name of the vault.
   - **`item`**: The item name or identifier.
   - **`field`**: The specific field to use.

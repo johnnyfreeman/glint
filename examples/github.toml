@@ -10,15 +10,15 @@ code = "{code}"
 [requests.headers]
 "Accept" = "application/json"
 [requests.dependencies.client_id]
-source = "envvar"
+source = "EnvVar"
 name = "GITHUB_CLIENT_ID"
 prompt = "Enter your GitHub Client ID"
 [requests.dependencies.client_secret]
-source = "envvar"
+source = "EnvVar"
 name = "GITHUB_CLIENT_SECRET"
 prompt = "Enter your GitHub Client Secret"
 [requests.dependencies.code]
-source = "envvar"
+source = "EnvVar"
 name = "GITHUB_AUTH_CODE"
 prompt = "Enter authorization code"
 

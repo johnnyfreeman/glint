@@ -8,7 +8,7 @@ grant_type = "client_credentials"
 [requests.headers]
 "Authorization" = "Basic {client_credentials_base64}"
 [requests.dependencies.client_credentials_base64]
-source = "envvar"
+source = "EnvVar"
 name = "SPOTIFY_CLIENT_CREDENTIALS"
 prompt = "Enter your Base64-encoded Client ID and Secret"
 

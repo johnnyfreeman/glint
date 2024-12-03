@@ -10,22 +10,22 @@ Body = "{message_body}"
 [requests.headers]
 "Authorization" = "Basic {auth_token}"
 [requests.dependencies.account_sid]
-source = "envvar"
+source = "EnvVar"
 name = "TWILIO_ACCOUNT_SID"
 prompt = "Enter your Twilio Account SID"
 [requests.dependencies.auth_token]
-source = "envvar"
+source = "EnvVar"
 name = "TWILIO_AUTH_TOKEN"
 prompt = "Enter your Twilio Auth Token"
 [requests.dependencies.to_number]
-source = "envvar"
+source = "EnvVar"
 name = "TWILIO_TO_NUMBER"
 prompt = "Enter the recipient's phone number"
 [requests.dependencies.from_number]
-source = "envvar"
+source = "EnvVar"
 name = "TWILIO_FROM_NUMBER"
 prompt = "Enter your Twilio phone number"
 [requests.dependencies.message_body]
-source = "prompt"
+source = "Prompt"
 label = "Enter the message you want to send"
 

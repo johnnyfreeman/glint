@@ -9,14 +9,14 @@ text = "{message_text}"
 [requests.headers]
 "Authorization" = "Bearer {api_token}"
 [requests.dependencies.api_token]
-source = "envvar"
+source = "EnvVar"
 name = "SLACK_API_TOKEN"
 prompt = "Enter your Slack API token"
 [requests.dependencies.channel_id]
-source = "envvar"
+source = "EnvVar"
 name = "SLACK_CHANNEL_ID"
 prompt = "Enter the Slack channel ID"
 [requests.dependencies.message_text]
-source = "prompt"
+source = "Prompt"
 label = "Enter the message to send"
 
