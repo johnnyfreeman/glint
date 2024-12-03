@@ -2,13 +2,11 @@
 name = "Get Token"
 method = "POST"
 url = "https://github.com/login/oauth/access_token"
-body = """
-{
-  "client_id": "{client_id}",
-  "client_secret": "{client_secret}",
-  "code": "{code}"
-}
-"""
+[requests.body]
+type = "Json"
+client_id = "{client_id}"
+client_secret = "{client_secret}"
+code = "{code}"
 [requests.headers]
 "Accept" = "application/json"
 [requests.dependencies.client_id]
