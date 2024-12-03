@@ -7,7 +7,7 @@
 > [!WARNING]
 > **This project is in its early stages and may undergo many breaking changes in the future.**
 
-![glint](https://github.com/user-attachments/assets/cc81d961-9a4a-4a0b-8703-6e47cced9762)
+![glint](https://github.com/user-attachments/assets/a6663c10-64a0-4e6f-ae4e-a3ac85fd2291)
 
 ## Features
 
