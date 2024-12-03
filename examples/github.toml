@@ -30,9 +30,9 @@ url = "https://api.github.com/user/repos"
 "Authorization" = "Bearer {token}"
 "Accept" = "application/vnd.github.v3+json"
 [requests.dependencies.token]
-source = "request"
+source = "Response"
 request = "Get Token"
-path = "/access_token"
+target = { source = "JsonBody", pointer = "/access_token" }
 
 [[requests]]
 name = "Get Repository"
@@ -42,15 +42,15 @@ url = "https://api.github.com/repos/{owner}/{repo}"
 "Authorization" = "Bearer {token}"
 "Accept" = "application/vnd.github.v3+json"
 [requests.dependencies.owner]
-source = "request"
+source = "Response"
 request = "Get Repositories"
-path = "/0/owner/login"
+target = { source = "JsonBody", pointer = "/0/owner/login" }
 [requests.dependencies.repo]
-source = "request"
+source = "Response"
 request = "Get Repositories"
-path = "/0/name"
+target = { source = "JsonBody", pointer = "/0/name" }
 [requests.dependencies.token]
-source = "request"
+source = "Response"
 request = "Get Token"
-path = "/access_token"
+target = { source = "JsonBody", pointer = "/access_token" }
 

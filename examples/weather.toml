@@ -21,13 +21,13 @@ url = "https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appi
 [requests.headers]
 "Accept" = "application/json"
 [requests.dependencies.lat]
-source = "request"
+source = "Response"
 request = "Get Current Weather"
-path = "/coord/lat"
+target = { source = "JsonBody", pointer = "/coord/lat" }
 [requests.dependencies.lon]
-source = "request"
+source = "Response"
 request = "Get Current Weather"
-path = "/coord/lon"
+target = { source = "JsonBody", pointer = "/coord/lon" }
 [requests.dependencies.api_key]
 source = "onepassword"
 vault = "Private"

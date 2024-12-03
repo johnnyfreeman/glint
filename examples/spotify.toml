@@ -19,7 +19,7 @@ url = "https://api.spotify.com/v1/me/playlists"
 [requests.headers]
 "Authorization" = "Bearer {access_token}"
 [requests.dependencies.access_token]
-source = "request"
+source = "Response"
 request = "Get Access Token"
-path = "/access_token"
+target = { source = "JsonBody", pointer = "/access_token" }
 

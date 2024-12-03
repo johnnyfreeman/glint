@@ -3,7 +3,7 @@ use crate::request::{Dependencies, Dependency, Request, RequestBody};
 use crate::resolvers::env_var_resolver::EnvVarResolver;
 use crate::resolvers::one_password_resolver::{OnePasswordResolver, OnePasswordResolverError};
 use crate::resolvers::prompt_resolver::{PromptResolver, PromptResolverError};
-use crate::resolvers::request_resolver::RequestResolver;
+use crate::resolvers::response_resolver::ResponseResolver;
 use crate::resolvers::Resolver;
 use crate::response::Response;
 use bat::PrettyPrinter;
@@ -13,7 +13,6 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use reqwest::header::{HeaderMap, HeaderName, InvalidHeaderValue};
 use reqwest::Client;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use thiserror::Error;
@@ -56,7 +55,7 @@ pub struct Executor {
     http: Client,
     env_var_resolver: EnvVarResolver,
     prompt_resolver: PromptResolver,
-    request_resolver: RequestResolver,
+    response_resolver: ResponseResolver,
     one_password_resolver: OnePasswordResolver,
 }
 
@@ -71,7 +70,7 @@ impl Executor {
             http: Client::new(),
             env_var_resolver: EnvVarResolver::new(),
             prompt_resolver: PromptResolver::new(),
-            request_resolver: RequestResolver::new(),
+            response_resolver: ResponseResolver::new(),
             one_password_resolver: OnePasswordResolver::new(),
         }
     }
@@ -215,12 +214,7 @@ impl Executor {
         };
         debug!("{:?}", response);
 
-        // Store the response for use in future requests, if applicable
-        if let Ok(json) = serde_json::from_str::<Value>(&response.text) {
-            let _ = &self
-                .request_resolver
-                .save_to_history(request.name.clone(), json);
-        }
+        self.response_resolver.save_to_history(response.clone());
 
         Ok(response)
     }
@@ -383,16 +377,15 @@ impl Executor {
                 })?;
                 Ok(file_content.trim().to_string())
             }
-            Dependency::Request { request, path } => {
+            Dependency::Response { request, target } => {
                 // Check if the request is already resolved
                 if let Ok(value) = self
-                    .request_resolver
-                    .resolve((request.clone(), path.clone()))
+                    .response_resolver
+                    .resolve((request.clone(), target.clone()))
                 {
                     return Ok(value);
                 }
 
-                // TODO: Resolve fresh request if this fails
                 let cloned_request = self
                     .requests
                     .get(request)
@@ -409,8 +402,8 @@ impl Executor {
                     })?;
 
                 Ok(self
-                    .request_resolver
-                    .resolve((request.to_owned(), path.to_owned()))
+                    .response_resolver
+                    .resolve((request.to_owned(), target.to_owned()))
                     .map_err(|error| {
                         DependencyResolutionError::NotImplemented(error.to_string())
                     })?)

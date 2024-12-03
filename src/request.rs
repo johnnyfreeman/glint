@@ -27,7 +27,7 @@ pub enum RequestBody {
 pub type Dependencies = HashMap<String, Dependency>;
 
 #[derive(Clone, Debug, Deserialize)]
-#[serde(tag = "source", rename_all = "lowercase")]
+#[serde(tag = "source")]
 pub enum Dependency {
     EnvVar {
         name: String,
@@ -49,10 +49,17 @@ pub enum Dependency {
     Prompt {
         label: String,
     },
-    Request {
+    Response {
         request: String,
-        path: String,
+        target: ResponseTarget,
     },
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "source")]
+pub enum ResponseTarget {
+    HeaderValue { key: String },
+    JsonBody { pointer: String },
 }
 
 #[tracing::instrument]
