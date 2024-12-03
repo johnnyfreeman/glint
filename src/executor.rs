@@ -1,8 +1,8 @@
 use crate::options::Options;
-use crate::request::{Dependency, Request};
+use crate::request::{Dependencies, Dependency, Request, RequestBody};
 use crate::resolvers::env_var_resolver::EnvVarResolver;
-use crate::resolvers::one_password_resolver::OnePasswordResolver;
-use crate::resolvers::prompt_resolver::PromptResolver;
+use crate::resolvers::one_password_resolver::{OnePasswordResolver, OnePasswordResolverError};
+use crate::resolvers::prompt_resolver::{PromptResolver, PromptResolverError};
 use crate::resolvers::request_resolver::RequestResolver;
 use crate::resolvers::Resolver;
 use crate::response::Response;
@@ -11,12 +11,13 @@ use console::style;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use reqwest::header::{HeaderMap, HeaderName};
+use reqwest::header::{HeaderMap, HeaderName, InvalidHeaderValue};
 use reqwest::Client;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use thiserror::Error;
+use tracing::{debug, error};
 
 lazy_static! {
     static ref PLACEHOLDER_REGEX: Regex = Regex::new(r"\{(\w+)\}").unwrap();
@@ -26,10 +27,22 @@ lazy_static! {
 pub enum ExecutionError {
     #[error("Request `{request:?}` was not found in history")]
     RequestNotFound { request: String },
-    #[error("Template `{template:?}` could not be resolved")]
-    ResolutionFailed { template: String },
-    #[error("Unknown execution error")]
-    Unknown,
+    #[error(transparent)]
+    DependencyResolutionFailed(#[from] DependencyResolutionError),
+    #[error("Unknown error: `{0:?}`")]
+    Unknown(String),
+}
+
+#[derive(Error, Debug)]
+pub enum DependencyResolutionError {
+    #[error(transparent)]
+    OnePasswordDependencyFailed(#[from] OnePasswordResolverError),
+    #[error(transparent)]
+    PromptDependencyFailed(#[from] PromptResolverError),
+    #[error("Not yet implemented: `{0}`")]
+    NotImplemented(String),
+    #[error("Dependency definition for `{placeholder:?}` could not be found")]
+    PlaceholderDefinitionNotFound { placeholder: String },
 }
 
 // Cache for loaded env files
@@ -94,75 +107,113 @@ impl Executor {
     pub async fn execute_request(&mut self, request: Request) -> Result<Response, ExecutionError> {
         // Resolve URL
         let url = self
-            .resolve_placeholders(&request.url, &request.dependencies)
-            .await
-            .map_err(|_| ExecutionError::ResolutionFailed {
-                template: request.url.clone(),
-            })?;
+            .resolve_placeholders(&request.url, request.dependencies.as_ref())
+            .await?;
+        debug!(url);
+
         let headers = if let Some(header_map) = &request.headers {
             let mut resolved_headers = HeaderMap::new();
             for (key, value) in header_map {
                 let resolved_key = self
-                    .resolve_placeholders(key, &request.dependencies)
+                    .resolve_placeholders(key, request.dependencies.as_ref())
                     .await
-                    .map_err(|_| ExecutionError::ResolutionFailed {
-                        template: key.to_owned(),
-                    })?;
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
                 let resolved_value = self
-                    .resolve_placeholders(value, &request.dependencies)
+                    .resolve_placeholders(value, request.dependencies.as_ref())
                     .await
-                    .map_err(|_| ExecutionError::ResolutionFailed {
-                        template: value.to_owned(),
-                    })?;
-                let header_name =
-                    HeaderName::from_bytes(resolved_key.as_bytes()).map_err(|_| {
-                        ExecutionError::ResolutionFailed {
-                            template: value.to_owned(),
-                        }
-                    })?;
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                let header_name = HeaderName::from_bytes(resolved_key.as_bytes())
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
                 resolved_headers.insert(
                     header_name,
                     resolved_value
                         .parse()
-                        .map_err(|_| ExecutionError::Unknown)?,
+                        .map_err(|error: InvalidHeaderValue| {
+                            ExecutionError::Unknown(error.to_string())
+                        })?,
                 );
             }
             resolved_headers
         } else {
             HeaderMap::new()
         };
+        debug!("{:?}", headers);
 
         // Resolve the request body, if it exists
-        let body = if let Some(body_template) = &request.body {
-            Some(
-                self.resolve_placeholders(body_template, &request.dependencies)
+        let body = match &request.body {
+            Some(RequestBody::Text(text)) => Some(RequestBody::Text(
+                self.resolve_placeholders(text, request.dependencies.as_ref())
                     .await
-                    .map_err(|_| ExecutionError::Unknown)?,
-            )
-        } else {
-            None
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
+            )),
+            Some(RequestBody::Json(json)) => {
+                // Serialize the entire JSON value to a string
+                let json_string = serde_json::to_string(&json)
+                    .map_err(|e| ExecutionError::Unknown(format!("Serialization error: {}", e)))?;
+
+                // Apply the resolve_placeholders function
+                let resolved_string = self
+                    .resolve_placeholders(&json_string, request.dependencies.as_ref())
+                    .await
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+
+                // Deserialize the resolved string back into a JSON value
+                let resolved_value = serde_json::from_str(&resolved_string).map_err(|e| {
+                    ExecutionError::Unknown(format!("Deserialization error: {}", e))
+                })?;
+
+                Some(RequestBody::Json(resolved_value))
+            }
+            Some(RequestBody::Form(hash_map)) => {
+                let mut resolved_form = HashMap::new();
+                for (key, value) in hash_map {
+                    let resolved_value = self
+                        .resolve_placeholders(value, request.dependencies.as_ref())
+                        .await
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                    resolved_form.insert(key.clone(), resolved_value);
+                }
+                Some(RequestBody::Form(resolved_form))
+            }
+            None => None,
         };
+        debug!("{:?}", body);
 
         // Execute the request and capture the response
-        let response = self
-            .http
-            .request(
-                reqwest::Method::from_bytes(request.method.as_bytes())
-                    .map_err(|_| ExecutionError::Unknown)?,
-                &url,
-            )
-            .headers(headers)
-            .body(body.unwrap_or_default())
-            .send()
-            .await
-            .map_err(|_| ExecutionError::Unknown)?;
+        let response = {
+            let builder = self
+                .http
+                .request(
+                    reqwest::Method::from_bytes(request.method.as_bytes())
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
+                    &url,
+                )
+                .headers(headers);
+
+            let builder = match body {
+                Some(RequestBody::Text(text)) => builder.body(text),
+                Some(RequestBody::Json(json)) => builder.json(&json),
+                Some(RequestBody::Form(form)) => builder.form(&form),
+                None => builder,
+            };
+            debug!("{:?}", builder);
+
+            builder
+                .send()
+                .await
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?
+        };
 
         let response = Response {
             request: request.clone(),
             headers: response.headers().clone(),
             status: response.status(),
-            text: response.text().await.map_err(|_| ExecutionError::Unknown)?,
+            text: response
+                .text()
+                .await
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
         };
+        debug!("{:?}", response);
 
         // Store the response for use in future requests, if applicable
         if let Ok(json) = serde_json::from_str::<Value>(&response.text) {
@@ -212,7 +263,7 @@ impl Executor {
                 .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
                 .language("toml") // Print as TOML (or use "yaml" for a similar format)
                 .print()
-                .map_err(|_| ExecutionError::Unknown)?;
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
         }
 
         println!();
@@ -220,13 +271,13 @@ impl Executor {
         // Pretty print the body, if it is valid JSON
         if let Ok(pretty_json) = serde_json::to_string_pretty(
             &serde_json::from_str::<serde_json::Value>(&response.text)
-                .map_err(|_| ExecutionError::Unknown)?,
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
         ) {
             PrettyPrinter::new()
                 .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
                 .language("json") // Specify JSON language for highlighting
                 .print()
-                .map_err(|_| ExecutionError::Unknown)?;
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
             println!();
         } else {
             // If it's not JSON, print the raw body as plain text
@@ -234,7 +285,7 @@ impl Executor {
                 .input_from_bytes(response.text.as_bytes()) // Use raw body text
                 .language("plain") // Print as plain text
                 .print()
-                .map_err(|_| ExecutionError::Unknown)?;
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
             println!();
         }
 
@@ -244,8 +295,8 @@ impl Executor {
     async fn resolve_placeholders(
         &mut self,
         template: &str,
-        request_dependencies: &Option<HashMap<String, Dependency>>,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+        request_dependencies: Option<&Dependencies>,
+    ) -> Result<String, DependencyResolutionError> {
         let mut resolved = template.to_string();
 
         // Find all placeholders in the template
@@ -259,7 +310,10 @@ impl Executor {
             {
                 self.resolve_dependency_value(dep, placeholder).await?
             } else {
-                return Err(format!("Unable to resolve placeholder: {}", placeholder).into());
+                error!("Resolving {} from request {}", placeholder, template);
+                return Err(DependencyResolutionError::PlaceholderDefinitionNotFound {
+                    placeholder: placeholder.to_string(),
+                });
             };
 
             // Replace the placeholder in the resolved string
@@ -273,7 +327,7 @@ impl Executor {
         &mut self,
         dep: &Dependency,
         _placeholder: &str,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, DependencyResolutionError> {
         match dep {
             Dependency::EnvFile {
                 env_file,
@@ -281,7 +335,9 @@ impl Executor {
                 prompt,
             } => {
                 // Load the TOML file
-                let mut env_data = load_env_file(env_file)?;
+                let mut env_data = load_env_file(env_file).map_err(|error| {
+                    DependencyResolutionError::NotImplemented(error.to_string())
+                })?;
 
                 if let Some(value) = env_data.get(key) {
                     Ok(value.clone())
@@ -291,13 +347,18 @@ impl Executor {
                     // Optionally, save the value back to the env file or cache
                     env_data.insert(key.clone(), value.clone());
                     // Save back to the file
-                    save_env_file(env_file, &env_data)?;
+                    save_env_file(env_file, &env_data).map_err(|error| {
+                        DependencyResolutionError::NotImplemented(error.to_string())
+                    })?;
                     // Update the cache
                     let mut cache = ENV_FILES_CACHE.lock().unwrap();
                     cache.insert(env_file.clone(), env_data);
                     Ok(value)
                 } else {
-                    Err(format!("Key '{}' not found in file '{}'", key, env_file).into())
+                    Err(DependencyResolutionError::NotImplemented(format!(
+                        "Could resolve {} key from env file {}",
+                        key, env_file
+                    )))
                 }
             }
             Dependency::EnvVar { name, prompt } => {
@@ -307,21 +368,19 @@ impl Executor {
                 {
                     Ok(env_value)
                 } else {
-                    Err(format!("Environment variable '{}' not found", name).into())
+                    Err(DependencyResolutionError::NotImplemented(format!(
+                        "Could resolve variable {} from env",
+                        name
+                    )))
                 }
             }
-            Dependency::OnePassword { vault, item, field } => {
-                if let Ok(value) =
-                    self.one_password_resolver
-                        .resolve((vault.clone(), item.clone(), field.clone()))
-                {
-                    Ok(value)
-                } else {
-                    Err(format!("1Password variable '{}' not found", vault).into())
-                }
-            }
+            Dependency::OnePassword { vault, item, field } => Ok(self
+                .one_password_resolver
+                .resolve((vault.clone(), item.clone(), field.clone()))?),
             Dependency::File { path } => {
-                let file_content = std::fs::read_to_string(path)?;
+                let file_content = std::fs::read_to_string(path).map_err(|error| {
+                    DependencyResolutionError::NotImplemented(error.to_string())
+                })?;
                 Ok(file_content.trim().to_string())
             }
             Dependency::Request { request, path } => {
@@ -337,16 +396,24 @@ impl Executor {
                 let cloned_request = self
                     .requests
                     .get(request)
-                    .ok_or(ExecutionError::RequestNotFound {
-                        request: request.to_owned(),
-                    })?
+                    .ok_or(DependencyResolutionError::NotImplemented(format!(
+                        "Request configuration for {} could not be found",
+                        request
+                    )))?
                     .clone();
 
-                Box::pin(self.execute_request(cloned_request)).await?;
+                Box::pin(self.execute_request(cloned_request))
+                    .await
+                    .map_err(|error| {
+                        DependencyResolutionError::NotImplemented(error.to_string())
+                    })?;
 
                 Ok(self
                     .request_resolver
-                    .resolve((request.to_owned(), path.to_owned()))?)
+                    .resolve((request.to_owned(), path.to_owned()))
+                    .map_err(|error| {
+                        DependencyResolutionError::NotImplemented(error.to_string())
+                    })?)
             }
             Dependency::Prompt { label } => Ok(self.prompt_resolver.resolve(label.clone())?),
         }

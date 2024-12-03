@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
@@ -12,9 +13,18 @@ pub struct Request {
     pub method: String,
     pub url: String,
     pub headers: Option<HashMap<String, String>>,
-    pub body: Option<String>,
-    pub dependencies: Option<HashMap<String, Dependency>>,
+    pub body: Option<RequestBody>,
+    pub dependencies: Option<Dependencies>,
 }
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "type")]
+pub enum RequestBody {
+    Text(String),
+    Json(Value),
+    Form(HashMap<String, String>),
+}
+
+pub type Dependencies = HashMap<String, Dependency>;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "source", rename_all = "lowercase")]

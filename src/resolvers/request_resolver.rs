@@ -2,7 +2,7 @@ use super::Resolver;
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
-use tracing::info;
+use tracing::{error, info, warn};
 
 #[derive(Error, Debug)]
 pub enum RequestResolverError {
@@ -26,7 +26,7 @@ impl RequestResolver {
 
     #[tracing::instrument]
     pub fn save_to_history(&mut self, request: String, response: Value) -> Option<Value> {
-        info!("Saving response for {} to history", request.clone());
+        info!("Saving response to history");
         self.history.insert(request, response)
     }
 }
@@ -50,9 +50,14 @@ impl Resolver for RequestResolver {
                     Ok(extracted.to_string())
                 }
             } else {
+                warn!(
+                    "Path {} not found in request {} where json is {}",
+                    path, request, json
+                );
                 Err(RequestResolverError::InvalidPath { path, request })
             }
         } else {
+            warn!("Request {} not found", request);
             Err(RequestResolverError::RequestNotFound { request })
         }
     }

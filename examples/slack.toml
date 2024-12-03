@@ -2,15 +2,12 @@
 name = "Post Message to Slack"
 method = "POST"
 url = "https://slack.com/api/chat.postMessage"
-body = """
-{
-  "channel": "{channel_id}",
-  "text": "{message_text}"
-}
-"""
+[requests.body]
+type = "Json"
+channel = "{channel_id}"
+text = "{message_text}"
 [requests.headers]
 "Authorization" = "Bearer {api_token}"
-"Content-Type" = "application/json"
 [requests.dependencies.api_token]
 source = "envvar"
 name = "SLACK_API_TOKEN"
