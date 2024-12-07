@@ -2,7 +2,7 @@ use super::Resolver;
 use crate::{request::ResponseTarget, response::Response};
 use std::collections::HashMap;
 use thiserror::Error;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 
 #[derive(Error, Debug)]
 pub enum ResponseResolverError {
@@ -30,8 +30,7 @@ impl ResponseResolver {
 
     #[tracing::instrument]
     pub fn save_to_history(&mut self, response: Response) -> Option<Response> {
-        info!("Saving response for request: {:?}", response.request);
-        debug!("Full response details: {:?}", response);
+        debug!("Saving response: {:?}", response);
         self.history.insert(response.request.name.clone(), response)
     }
 
@@ -40,7 +39,7 @@ impl ResponseResolver {
         request: &String,
         key: &String,
     ) -> Result<String, ResponseResolverError> {
-        info!("Resolving header '{}' for request '{}'", key, request);
+        debug!("Resolving header '{}' for request '{}'", key, request);
         if let Some(response) = self.history.get(request) {
             debug!("Found response for request '{}': {:?}", request, response);
             if let Some(value) = response.headers.get(key) {
@@ -54,14 +53,14 @@ impl ResponseResolver {
                     });
                 }
             } else {
-                warn!("Header '{}' not found in request '{}'", key, request);
+                error!("Header '{}' not found in request '{}'", key, request);
                 return Err(ResponseResolverError::HeaderNotFound {
                     key: key.clone(),
                     request: request.clone(),
                 });
             }
         } else {
-            error!("Request '{}' not found in history", request);
+            warn!("Request '{}' not found in history", request);
             return Err(ResponseResolverError::RequestNotFound {
                 request: request.clone(),
             });
@@ -73,7 +72,7 @@ impl ResponseResolver {
         request: &String,
         path: &String,
     ) -> Result<String, ResponseResolverError> {
-        info!("Resolving JSON path '{}' for request '{}'", path, request);
+        debug!("Resolving JSON path '{}' for request '{}'", path, request);
         if let Some(response) = self.history.get(request) {
             if let Ok(json) = &response.json() {
                 debug!("Found JSON body for request '{}': {:?}", request, json);
@@ -86,7 +85,7 @@ impl ResponseResolver {
                         return Ok(extracted.to_string());
                     }
                 } else {
-                    warn!("Path '{}' not found in request '{}'", path, request);
+                    error!("Path '{}' not found in {:?}", path, response);
                     return Err(ResponseResolverError::InvalidPath {
                         path: path.clone(),
                         request: request.clone(),
