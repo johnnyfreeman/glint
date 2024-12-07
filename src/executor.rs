@@ -220,67 +220,92 @@ impl Executor {
     }
 
     async fn render_output(&mut self, response: Response) -> Result<(), ExecutionError> {
-        println!(
-            "\n{} {}",
-            if let true = response.status.is_client_error() {
-                style(" ".to_string() + response.status.as_str() + " ")
-                    .on_yellow()
-                    .black()
-            } else if let true = response.status.is_server_error() {
-                style(" ".to_string() + response.status.as_str() + " ")
-                    .on_red()
-                    .black()
+        if self.options.hide_status == false {
+            if self.options.raw_output {
+                println!(
+                    "{}: {}",
+                    response.status.as_str(),
+                    &response.status.canonical_reason().unwrap_or(""),
+                );
             } else {
-                style(" ".to_string() + response.status.as_str() + " ")
-                    .on_green()
-                    .black()
-            },
-            style(&response.request.name).bold(),
-            // status.canonical_reason().unwrap_or(""),
-        );
-        // println!("{}", style("─".repeat(50)).dim());
-
-        if self.options.show_headers {
-            // Prepare the headers in a formatted string for pretty printing
-            let mut headers_formatted = String::new();
-            for (key, value) in response.headers {
-                let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
-                let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
-                headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
-                // Format as key: value without quotes
+                println!(
+                    "{} {}",
+                    if let true = response.status.is_client_error() {
+                        style(" ".to_string() + response.status.as_str() + " ")
+                            .on_yellow()
+                            .black()
+                    } else if let true = response.status.is_server_error() {
+                        style(" ".to_string() + response.status.as_str() + " ")
+                            .on_red()
+                            .black()
+                    } else {
+                        style(" ".to_string() + response.status.as_str() + " ")
+                            .on_green()
+                            .black()
+                    },
+                    style(&response.status.canonical_reason().unwrap_or("")).bold(),
+                );
             }
-
-            println!();
-
-            // Pretty print the headers
-            PrettyPrinter::new()
-                .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
-                .language("toml") // Print as TOML (or use "yaml" for a similar format)
-                .print()
-                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
         }
 
-        println!();
+        if self.options.show_headers {
+            if self.options.raw_output {
+                for (key, value) in response.headers {
+                    println!(
+                        "{}: {}",
+                        key.as_ref().map(|k| k.as_str()).unwrap_or(""),
+                        value.to_str().unwrap_or("")
+                    );
+                }
+            } else {
+                // Prepare the headers in a formatted string for pretty printing
+                let mut headers_formatted = String::new();
+                for (key, value) in response.headers {
+                    let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
+                    let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
+                    headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
+                    // Format as key: value without quotes
+                }
 
-        // Pretty print the body, if it is valid JSON
-        if let Ok(pretty_json) = serde_json::to_string_pretty(
-            &serde_json::from_str::<serde_json::Value>(&response.text)
-                .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
-        ) {
-            PrettyPrinter::new()
-                .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
-                .language("json") // Specify JSON language for highlighting
-                .print()
-                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
-            println!();
-        } else {
-            // If it's not JSON, print the raw body as plain text
-            PrettyPrinter::new()
-                .input_from_bytes(response.text.as_bytes()) // Use raw body text
-                .language("plain") // Print as plain text
-                .print()
-                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
-            println!();
+                // Pretty print the headers
+                PrettyPrinter::new()
+                    .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
+                    .language("toml") // Print as TOML (or use "yaml" for a similar format)
+                    .print()
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+            }
+        }
+
+        if self.options.hide_body == false {
+            if self.options.raw_output {
+                println!(
+                    "{}",
+                    serde_json::to_string(
+                        &serde_json::from_str::<serde_json::Value>(&response.text)
+                            .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
+                    )
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?
+                );
+            } else {
+                // Pretty print the body, if it is valid JSON
+                if let Ok(pretty_json) = serde_json::to_string_pretty(
+                    &serde_json::from_str::<serde_json::Value>(&response.text)
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
+                ) {
+                    PrettyPrinter::new()
+                        .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
+                        .language("json") // Specify JSON language for highlighting
+                        .print()
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                } else {
+                    // If it's not JSON, print the raw body as plain text
+                    PrettyPrinter::new()
+                        .input_from_bytes(response.text.as_bytes()) // Use raw body text
+                        .language("plain") // Print as plain text
+                        .print()
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                }
+            }
         }
 
         Ok(())
