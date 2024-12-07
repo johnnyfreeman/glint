@@ -7,11 +7,17 @@ pub struct Options {
 
     pub request: Option<String>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(short('h'), long, default_value_t = false)]
     pub show_headers: bool,
+
+    #[arg(short('s'), long, default_value_t = false)]
+    pub hide_status: bool,
+
+    #[arg(short('b'), long, default_value_t = false)]
+    pub hide_body: bool,
+
+    #[arg(short('r'), long, default_value_t = false)]
+    pub raw_output: bool,
     // #[arg(short, long, value_name = "FILE")]
     // pub env: Option<String>,
-
-    // #[arg(short, long, action = clap::ArgAction::Count)]
-    // pub debug: u8,
 }
