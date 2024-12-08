@@ -22,6 +22,7 @@
   - User prompts
   - 1Password vaults
 - **Automatic Value Caching:** If glint prompts you for a value, it gets stored in memory so you don't have to type it in again for follow-up requests.
+- **Pre-Output Masking:** Automatically mask or redact sensitive fields in API responses or logs before output using JSON Pointers and customizable strategies.
 - **Supports All HTTP Methods:** You can use any HTTP method you need in your request definitions.
 
 ## Usage
@@ -53,6 +54,56 @@ This command mounts your local `examples` directory to the container, allowing G
   - Placeholders like `{name}` and `{email}` get replaced with actual values at runtime.
   - If we can't find a value in your `env_file`, we'll ask you for it and save it for next time.
   - You can also use 1Password credentials to fill in placeholders for extra security.
+
+- **Masking Sensitive Data:**
+
+  Glint supports pre-output masking to protect sensitive data in API responses or logs. You can define masking rules using JSON Pointers to specify fields and choose how they are masked.
+Example Masking Rule:
+
+```toml
+[masking]
+enabled = true
+
+[[masking.rules]]
+pointer = "/user/ssn"
+strategy = "default"
+
+[[masking.rules]]
+pointer = "/user/email"
+strategy = "regex"
+pattern = "@.*$"
+replacement = "@***"
+```
+
+- **Strategies**:
+  - `default`: Replace the value with ***MASKED***.
+  - `partial`: Show partial values (e.g., 123-**-**** for SSNs).
+  - `regex`: Apply a regex pattern to redact or mask specific data.
+  - `custom`: Use a user-defined masking function.
+
+Example Input:
+
+```json
+{
+  "user": {
+    "name": "John Doe",
+    "ssn": "123-45-6789",
+    "email": "johndoe@example.com"
+  }
+}
+```
+
+Example Output:
+
+```json
+{
+  "user": {
+    "name": "John Doe",
+    "ssn": "***MASKED***",
+    "email": "johndoe@***"
+  }
+}
+```
 
 - **Request Execution:**
 
