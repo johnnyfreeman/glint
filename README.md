@@ -61,25 +61,16 @@ This command mounts your local `examples` directory to the container, allowing G
 Example Masking Rule:
 
 ```toml
-[masking]
-enabled = true
+[[masking_rules]]
+path = "$.user.ssn"
+regex = "\\d{3}-\\d{2}-\\d{4}"
+replace = "***-**-****"
 
-[[masking.rules]]
-pointer = "/user/ssn"
-strategy = "default"
-
-[[masking.rules]]
-pointer = "/user/email"
-strategy = "regex"
-pattern = "@.*$"
-replacement = "@***"
+[[masking_rules]]
+path = "$.user.email"
+regex = "(.{2})(.*)(@.*)"
+replace = "$1***$3"
 ```
-
-- **Strategies**:
-  - `default`: Replace the value with ***MASKED***.
-  - `partial`: Show partial values (e.g., 123-**-**** for SSNs).
-  - `regex`: Apply a regex pattern to redact or mask specific data.
-  - `custom`: Use a user-defined masking function.
 
 Example Input:
 
@@ -99,8 +90,8 @@ Example Output:
 {
   "user": {
     "name": "John Doe",
-    "ssn": "***MASKED***",
-    "email": "johndoe@***"
+    "ssn": "***-**-****",
+    "email": "jo***@example.com"
   }
 }
 ```
