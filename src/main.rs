@@ -1,5 +1,6 @@
 mod executor;
 mod logging;
+mod masking;
 mod options;
 mod request;
 mod resolvers;

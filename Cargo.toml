@@ -21,4 +21,5 @@ thiserror = "1.0.65"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 tracing-appender = "0.2.3"
+jsonpath_lib = "0.3.0"
 

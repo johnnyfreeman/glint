@@ -2,6 +2,8 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 
+use crate::masking::MaskingRule;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub requests: Vec<Request>,
@@ -15,6 +17,8 @@ pub struct Request {
     pub headers: Option<HashMap<String, String>>,
     pub body: Option<RequestBody>,
     pub dependencies: Option<Dependencies>,
+    #[serde(default)]
+    pub masking_rules: Vec<MaskingRule>,
 }
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type")]
