@@ -1,3 +1,4 @@
+use crate::masking::mask_json;
 use crate::options::Options;
 use crate::request::{Dependencies, Dependency, Request, RequestBody};
 use crate::resolvers::env_var_resolver::EnvVarResolver;
@@ -11,7 +12,7 @@ use console::style;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use reqwest::header::{HeaderMap, HeaderName, InvalidHeaderValue};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue};
 use reqwest::Client;
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -220,37 +221,52 @@ impl Executor {
     }
 
     async fn render_output(&mut self, response: Response) -> Result<(), ExecutionError> {
-        if self.options.hide_status == false {
+        if !self.options.hide_status {
             if self.options.raw_output {
                 println!(
                     "{}: {}",
                     response.status.as_str(),
-                    &response.status.canonical_reason().unwrap_or(""),
+                    response.status.canonical_reason().unwrap_or(""),
                 );
             } else {
                 println!(
                     "{} {}",
-                    if let true = response.status.is_client_error() {
-                        style(" ".to_string() + response.status.as_str() + " ")
+                    if response.status.is_client_error() {
+                        style(format!(" {} ", response.status.as_str()))
                             .on_yellow()
                             .black()
-                    } else if let true = response.status.is_server_error() {
-                        style(" ".to_string() + response.status.as_str() + " ")
+                    } else if response.status.is_server_error() {
+                        style(format!(" {} ", response.status.as_str()))
                             .on_red()
                             .black()
                     } else {
-                        style(" ".to_string() + response.status.as_str() + " ")
+                        style(format!(" {} ", response.status.as_str()))
                             .on_green()
                             .black()
                     },
-                    style(&response.status.canonical_reason().unwrap_or("")).bold(),
+                    style(response.status.canonical_reason().unwrap_or("")).bold(),
                 );
             }
         }
 
         if self.options.show_headers {
+            let mut headers_masked = response.headers.clone();
+
+            // Apply masking to headers using response.request.masking_rules
+            for (_key, value) in &mut headers_masked {
+                if let Some(value_str) = value.to_str().ok() {
+                    let masked_value = mask_json(
+                        serde_json::json!(value_str),
+                        &response.request.masking_rules,
+                    )
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                    *value = HeaderValue::from_str(masked_value.as_str().unwrap())
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                }
+            }
+
             if self.options.raw_output {
-                for (key, value) in response.headers {
+                for (key, value) in headers_masked {
                     println!(
                         "{}: {}",
                         key.as_ref().map(|k| k.as_str()).unwrap_or(""),
@@ -258,50 +274,46 @@ impl Executor {
                     );
                 }
             } else {
-                // Prepare the headers in a formatted string for pretty printing
                 let mut headers_formatted = String::new();
-                for (key, value) in response.headers {
-                    let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or(""); // Safely unwrap the header key
-                    let value_str = value.to_str().unwrap_or(""); // Convert HeaderValue to str, fallback to empty string if invalid
+                for (key, value) in headers_masked {
+                    let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or("");
+                    let value_str = value.to_str().unwrap_or("");
                     headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
-                    // Format as key: value without quotes
                 }
 
-                // Pretty print the headers
                 PrettyPrinter::new()
-                    .input_from_bytes(headers_formatted.as_bytes()) // Use the formatted headers
-                    .language("toml") // Print as TOML (or use "yaml" for a similar format)
+                    .input_from_bytes(headers_formatted.as_bytes())
+                    .language("toml")
                     .print()
                     .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
             }
         }
 
-        if self.options.hide_body == false {
+        if !self.options.hide_body {
+            let masked_body = mask_json(
+                serde_json::from_str::<serde_json::Value>(&response.text)
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
+                &response.request.masking_rules,
+            )
+            .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+
             if self.options.raw_output {
                 println!(
                     "{}",
-                    serde_json::to_string(
-                        &serde_json::from_str::<serde_json::Value>(&response.text)
-                            .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
-                    )
-                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?
+                    serde_json::to_string(&masked_body)
+                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?
                 );
             } else {
-                // Pretty print the body, if it is valid JSON
-                if let Ok(pretty_json) = serde_json::to_string_pretty(
-                    &serde_json::from_str::<serde_json::Value>(&response.text)
-                        .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
-                ) {
+                if let Ok(pretty_json) = serde_json::to_string_pretty(&masked_body) {
                     PrettyPrinter::new()
-                        .input_from_bytes(pretty_json.as_bytes()) // Use the formatted pretty JSON
-                        .language("json") // Specify JSON language for highlighting
+                        .input_from_bytes(pretty_json.as_bytes())
+                        .language("json")
                         .print()
                         .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
                 } else {
-                    // If it's not JSON, print the raw body as plain text
                     PrettyPrinter::new()
-                        .input_from_bytes(response.text.as_bytes()) // Use raw body text
-                        .language("plain") // Print as plain text
+                        .input_from_bytes(response.text.as_bytes())
+                        .language("plain")
                         .print()
                         .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
                 }
