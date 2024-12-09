@@ -250,23 +250,24 @@ impl Executor {
         }
 
         if self.options.show_headers {
-            let mut headers_masked = response.headers.clone();
+            let mut headers = response.headers.clone();
 
-            // Apply masking to headers using response.request.masking_rules
-            for (_key, value) in &mut headers_masked {
-                if let Some(value_str) = value.to_str().ok() {
-                    let masked_value = mask_json(
-                        serde_json::json!(value_str),
-                        &response.request.masking_rules,
-                    )
-                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
-                    *value = HeaderValue::from_str(masked_value.as_str().unwrap())
+            if !self.options.disable_masking {
+                for (_key, value) in &mut headers {
+                    if let Some(value_str) = value.to_str().ok() {
+                        let masked_value = mask_json(
+                            serde_json::json!(value_str),
+                            &response.request.masking_rules,
+                        )
                         .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                        *value = HeaderValue::from_str(masked_value.as_str().unwrap())
+                            .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+                    }
                 }
             }
 
             if self.options.raw_output {
-                for (key, value) in headers_masked {
+                for (key, value) in headers {
                     println!(
                         "{}: {}",
                         key.as_ref().map(|k| k.as_str()).unwrap_or(""),
@@ -275,7 +276,7 @@ impl Executor {
                 }
             } else {
                 let mut headers_formatted = String::new();
-                for (key, value) in headers_masked {
+                for (key, value) in headers {
                     let key_str = key.as_ref().map(|k| k.as_str()).unwrap_or("");
                     let value_str = value.to_str().unwrap_or("");
                     headers_formatted.push_str(&format!("{}: {}\n", key_str, value_str));
@@ -290,21 +291,22 @@ impl Executor {
         }
 
         if !self.options.hide_body {
-            let masked_body = mask_json(
-                serde_json::from_str::<serde_json::Value>(&response.text)
-                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?,
-                &response.request.masking_rules,
-            )
-            .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+            let mut body = serde_json::from_str::<serde_json::Value>(&response.text)
+                .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+
+            if !self.options.disable_masking {
+                body = mask_json(body, &response.request.masking_rules)
+                    .map_err(|error| ExecutionError::Unknown(error.to_string()))?;
+            }
 
             if self.options.raw_output {
                 println!(
                     "{}",
-                    serde_json::to_string(&masked_body)
+                    serde_json::to_string(&body)
                         .map_err(|error| ExecutionError::Unknown(error.to_string()))?
                 );
             } else {
-                if let Ok(pretty_json) = serde_json::to_string_pretty(&masked_body) {
+                if let Ok(pretty_json) = serde_json::to_string_pretty(&body) {
                     PrettyPrinter::new()
                         .input_from_bytes(pretty_json.as_bytes())
                         .language("json")

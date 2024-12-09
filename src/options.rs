@@ -24,4 +24,8 @@ pub struct Options {
     /// Disables pretty-printing for the HTTP response (enabled by default)
     #[arg(short = 'r', long, default_value_t = false)]
     pub raw_output: bool,
+
+    /// Disables pre-output masking (enabled by default)
+    #[arg(short = 'm', long, default_value_t = false)]
+    pub disable_masking: bool,
 }
