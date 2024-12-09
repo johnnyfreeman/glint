@@ -149,32 +149,21 @@ Dependencies tell us how to fill in placeholders. Here's what we support:
 
 ## Installation
 
-1. **Clone the Repo:**
+### Via Git
 
-   ```bash
-   git clone git@github.com:johnnyfreeman/glint.git
-   cd glint
-   ```
+ ```bash
+ git clone git@github.com:johnnyfreeman/glint.git
+ cd glint
+ cargo install --path .
+ ```
 
-2. **Build and Install Glint:**
+### Via Docker
 
-   ```bash
-   cargo install --path .
-   ```
+Otherwise, you can run a dockerized version via an alias (add this to your ~/.bashrc, ~/.zshrc or similar to simplify reuse).
 
-3. **Using Docker:**
-
-   To build the Docker image, use the following command:
-
-   ```bash
-   docker build -t johnnyfreeman/glint .
-   ```
-
-   To run Glint using Docker, use:
-
-   ```bash
-   docker run --rm -v $(pwd)/examples:/glint johnnyfreeman/glint examples/weather.toml
-   ```
+```bash
+alias glint="docker run --rm -v "${PWD}:/glint" johnnyfreeman/glint:latest"
+```
 
 And that's it! You can now use `glint` from your terminal or within a Docker container.
 
