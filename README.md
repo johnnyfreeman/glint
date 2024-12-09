@@ -11,19 +11,18 @@
 
 ## Features
 
-- **Local-Only Design**: Glint keeps everything local. That means your files are yours, perfect for testing without worrying about data going to the cloud.
-- **Versioning and Sharing**: Since everything is just regular files, you can easily version and share them with Git. Keep a history of your requests and share them with your team so everyone's on the same page.
-- **HTTP Request Collections:** You can put together collections of HTTP requests in a `requests.toml` file.
-- **Dynamic Placeholders:** Use placeholders in your URLs, headers, and bodies, and they'll get filled in at runtime.
-- **Flexible Dependency Resolution:** Fill in placeholders from lots of different sources:
-  - Environment Variables
-  - Environment files (TOML)
-  - Previous request responses
-  - User prompts
-  - 1Password vaults
-- **Automatic Value Caching:** If glint prompts you for a value, it gets stored in memory so you don't have to type it in again for follow-up requests.
-- **Pre-Output Masking:** Automatically mask or redact sensitive fields in API responses or logs before output using JSON Pointers and customizable strategies.
-- **Supports All HTTP Methods:** You can use any HTTP method you need in your request definitions.
+- [x] **Local-Only Design**: Glint keeps everything local. That means your files are yours, perfect for testing without worrying about data going to the cloud.
+- [x] **Versioning and Sharing**: Since everything is just regular files, you can easily version and share them with Git. Keep a history of your requests and share them with your team so everyone's on the same page.
+- [x] **HTTP Request Collections:** You can put together collections of HTTP requests in a `collection-name-here.toml` file.
+- [x] **Dynamic Placeholders:** Use placeholders in your URLs, headers, and bodies, and they'll get filled in at runtime using Dependency Resolution.
+- [x] **Flexible Dependency Resolution:** Fill in placeholders from lots of different sources:
+  - [x] Environment Variables
+  - [x] Environment files (TOML)
+  - [x] Previous request responses
+  - [x] User prompts
+  - [x] 1Password vaults
+- [x] **Pre-Output Masking:** Automatically mask or redact sensitive fields in output using JSON Path and regex.
+- [ ] **Encrypted Credential Storage:** A vault for storing your credentials in a secure manner.
 
 ## Usage
 
