@@ -24,6 +24,10 @@
 - [x] **Pre-Output Masking:** Automatically mask or redact sensitive fields in output using JSON Path and regex.
 - [ ] **Encrypted Credential Storage:** A vault for storing your credentials in a secure manner.
 
+## Known Issues
+
+- [ ] Error handling and logging aren't great. Sometimes it's difficult to know why it's not working.
+
 ## Usage
 
 ### Running the Application
