@@ -76,7 +76,7 @@ impl Executor {
         }
     }
 
-    pub async fn execute(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn execute(&mut self) -> Result<(), ExecutionError> {
         match &self.options.request {
             Some(request_name) => {
                 let request = self
