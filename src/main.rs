@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let guard = init_logging()?;
 
     match Cli::parse().command {
-        Commands::Collection { command } => match command {
+        Commands::Collections { command } => match command {
             CollectionCommands::Run {
                 collection,
                 output_options,
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         },
-        Commands::Request { command } => match command {
+        Commands::Requests { command } => match command {
             RequestCommands::Run {
                 collection,
                 request,
